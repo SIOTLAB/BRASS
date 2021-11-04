@@ -1,0 +1,3 @@
+[submodule "EosSdk"]
+	path = EosSdk
+	url = https://github.com/aristanetworks/EosSdk.git
