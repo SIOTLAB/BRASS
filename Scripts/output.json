@@ -1,0 +1,14 @@
+{
+  "jsonrpc": "2.0",
+  "id": "EapiExplorer-1",
+  "result": [
+    {
+      "platform": "CCS-720XP-24ZY4",
+      "features": {},
+      "customerName": "",
+      "deviceSerial": "",
+      "domainName": "Unknown",
+      "systemMac": ""
+    }
+  ]
+}
