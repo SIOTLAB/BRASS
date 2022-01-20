@@ -33,6 +33,10 @@ while 1:
             print("Got service announcement from",
                   data[len(MAGIC)+1:-1].decode().split(',')[2])
             #  s.sendto(str.encode("Hello from client"), (data[2], PORT))
+
+            #  Send the client's IP and PORT
+            #  Connect to the server's IP and PORT
+
             break
     else:
         print("timeout")

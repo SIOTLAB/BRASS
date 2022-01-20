@@ -34,3 +34,5 @@ while 1:
     s.sendto(data.encode(), ('<broadcast>', PORT))
     print('sent service announcement')
     sleep(2)
+
+    #  s.recvall()
