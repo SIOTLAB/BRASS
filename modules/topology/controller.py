@@ -9,7 +9,7 @@ switch = input("Switch ip: ")
 username = input("Username: ")
 password = input("Password: ")
 
-url = 'https://{}:{}@{}/command-api'.format(username, password, switch)
+url = 'https://{}:{}@{}/command-api'.format(usernaøme, password, switch)
 
 # SSL certificate check keeps failing; only use HTTPS verification if possible
 try:
