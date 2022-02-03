@@ -5,17 +5,20 @@ from lib2to3.pytree import BasePattern
 from multiprocessing.sharedctypes import Value
 import jsonrpclib
 import ssl
+import networkx as nx
 
 RACK = 224
 
 ips = {
     "sw21-r224" : "10.16.224.21",
     "sw22-r224" : "10.16.224.22",
-    "sw23-r224" : "10.16.224.23",
+    # "sw23-r224" : "10.16.224.23",
 }
 
 username = "admin"
 base_password = "$iot" + str(RACK) + "-"
+
+G = nx.Graph()
 
 for name, ip in ips.items():
     print(name + " lldp info")
@@ -39,6 +42,7 @@ for name, ip in ips.items():
     payload = ["show lldp neighbors"]
     response = eapi_conn.runCmds(1, payload)[0]
 
+    G.add_node(name)
     neighbors = response['lldpNeighbors']
 
     # print(neighbors)
@@ -46,7 +50,9 @@ for name, ip in ips.items():
     for n in neighbors:
         neighbor_name = n["neighborDevice"]
         neighbor_ip = ips[neighbor_name]
-
+        G.add_edge(name, neighbor_name)
         print(neighbor_name + " : " + neighbor_ip)
 
-    print(f"--------------------------------")
+    print("--------------------------------")
+
+print(G)
