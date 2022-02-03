@@ -23,7 +23,7 @@ SOCK.send(str.encode(MESSAGE))
 response = SOCK.recv(1024)
 print(response.decode("utf-8"))
 
-time.sleep(5)
+time.sleep(1)
 SOCK.send(str.encode(IP + "," + HOST))
 response = SOCK.recv(1024)
 print(response.decode("utf-8"))

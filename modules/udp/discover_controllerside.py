@@ -27,17 +27,25 @@ SOCK.listen(5)
 
 def threaded_client(connection, address):
     connection.send(str.encode("Welcome to the server"))
-    while True:
-        data = connection.recv(2048)
-        #  data, address = sock.recvfrom(4096)
-        reply = str(data.decode("utf-8"))
-        print("From " + str(address[1]) + ": " + reply)
+    data = connection.recv(2048)
+    if not data:
+        return
+    reply = str(data.decode("utf-8"))
 
-        if not data:
-            break
+    if reply == MESSAGE:
+        connection.sendall(str.encode(RESPONSE))
+        while True:
+            #  data, address = sock.recvfrom(4096)
+            data = connection.recv(2048)
+            if not data:
+                break
+            reply = str(data.decode("utf-8"))
 
-        connection.sendall(str.encode(reply))
+            print("From " + address[0] + ": " + reply)
 
+            connection.sendall(str.encode(reply))
+
+    print("Close connection " + address[0])
     connection.close()
 
     #  if data == RESPONSE:
@@ -49,7 +57,13 @@ while True:
     client, address = SOCK.accept()
     print("Connected to: " + address[0] + ":" + str(address[1]))
 
-    thread = threading.Thread(target=threaded_client, args=(client, address, ))
+    thread = threading.Thread(
+        target=threaded_client,
+        args=(
+            client,
+            address,
+        ),
+    )
     thread.start()
     threadCount += 1
     print("Thread number: " + str(threadCount))
