@@ -2,32 +2,60 @@
 
 import os
 import socket
-import sys
-import subprocess
+import threading
 
-# FOR TESTING VIA LAPTOP IN VLAN OF RACK 224
-# myIP = str(os.popen("ifconfig tun0 | grep 'inet ' | awk '{print $2}'").read().decode())
-# myIP = os.popen("ifconfig tun0 | grep 'inet ' | awk '{print $2}'").read()
-myIP = '10.16.252.10'
-###
+#  sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#  sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+SOCK = socket.socket()
+#  IP = '10.16.252.10'
+IP = "127.0.0.1"
+PORT = 9434
+MESSAGE = "pfg_ip_response_serv"
+RESPONSE = "pfg_ip_broadcast_cl"
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+threadCount = 0
 
-# server_address = ('10.16.252.11', 9434)
-server_address = (myIP, 9434)
+try:
+    SOCK.bind((IP, PORT))
+except socket.error as e:
+    print(str(e))
+print("Server bound on " + IP + ":" + str(PORT))
 
-sock.bind(server_address)
-print('Server bound on:', myIP, 9434)
+print("Waiting for a connection...")
+SOCK.listen(5)
 
-message = 'pfg_ip_response_serv'
-response = 'pfg_ip_broadcast_cl'
+
+def threaded_client(connection, address):
+    connection.send(str.encode("Welcome to the server"))
+    while True:
+        data = connection.recv(2048)
+        #  data, address = sock.recvfrom(4096)
+        reply = str(data.decode("utf-8"))
+        print("From " + str(address[1]) + ": " + reply)
+
+        if not data:
+            break
+
+        connection.sendall(str.encode(reply))
+
+    connection.close()
+
+    #  if data == RESPONSE:
+    #      sent = sock.sendto(MESSAGE.encode(), address)
+    #  print(address[0])
+
 
 while True:
-    data, address = sock.recvfrom(4096)
-    data = str(data.decode('UTF-8'))
+    client, address = SOCK.accept()
+    print("Connected to: " + address[0] + ":" + str(address[1]))
 
-    if data == response:
-        sent = sock.sendto(message.encode(), address)
-	
-	print(address[0])
+    thread = threading.Thread(target=threaded_client, args=(client, address, ))
+    thread.start()
+    threadCount += 1
+    print("Thread number: " + str(threadCount))
+
+    thread.join()
+    threadCount -= 1
+    print("Thread number: " + str(threadCount))
+
+SOCK.close()

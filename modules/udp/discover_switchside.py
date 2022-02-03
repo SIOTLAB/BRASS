@@ -1,36 +1,31 @@
 #!/usr/bin/env python
 
-from socket import *
-import sys
+import socket
 import time
 
-# Create a UDP socket
-sock = socket(AF_INET, SOCK_DGRAM)
-sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-sock.settimeout(5)
-
-server_address = ('10.16.252.10', 9434)
-message = 'pfg_ip_broadcast_cl'
+SOCK = socket.socket()
+IP = socket.gethostname()
+NAME = socket.gethostbyname(IP)
+HOST = "127.0.0.1"
+PORT = 9434
+MESSAGE = "pfg_ip_response_serv"
+RESPONSE = "pfg_ip_broadcast_cl"
 
 try:
-	while True:
-		# Send data
-		print('sending: ' + message)
-		sent = sock.sendto(message.encode(), server_address)
+    SOCK.connect((HOST, PORT))
+except socket.error as e:
+    print(str(e))
 
-		# Receive response
-		print('waiting to receive')
-		data, server = sock.recvfrom(4096)
-		if data.decode('UTF-8') == 'pfg_ip_response_serv':
-			print('Received confirmation')
-			print('Server ip: ' + str(server[0]) )
-			break
-		else:
-			print('Verification failed')
-		
-		print('Trying again...')
-	
-	
-finally:	
-	sock.close()
+response = SOCK.recv(1024)
+
+#  while True:
+SOCK.send(str.encode(MESSAGE))
+response = SOCK.recv(1024)
+print(response.decode("utf-8"))
+
+time.sleep(5)
+SOCK.send(str.encode(IP + "," + HOST))
+response = SOCK.recv(1024)
+print(response.decode("utf-8"))
+
+SOCK.close()
