@@ -10,7 +10,7 @@ sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 sock.settimeout(5)
 
-server_address = ('10.16.252.11', 9434)
+server_address = ('10.16.252.10', 9434)
 message = 'pfg_ip_broadcast_cl'
 
 try:
