@@ -6,6 +6,7 @@ from multiprocessing.sharedctypes import Value
 import jsonrpclib
 import ssl
 import networkx as nx
+import matplotlib
 
 RACK = 224
 
@@ -50,9 +51,17 @@ for name, ip in ips.items():
     for n in neighbors:
         neighbor_name = n["neighborDevice"]
         neighbor_ip = ips[neighbor_name]
-        G.add_edge(name, neighbor_name)
+        G.add_edge(name, neighbor_name, 0)
         print(neighbor_name + " : " + neighbor_ip)
 
     print("--------------------------------")
 
-print(G)
+G.add_edge("sw21-r224", "sw22-r224")
+G.edges['sw21-r224', 'sw22-r224']['weight'] = 200
+labels = nx.get_edge_attributes(G, "weight")
+pls = nx.spring_layout(G)
+nx.draw_networkx(G, pls)
+nx.draw_networkx_edge_labels(G, pls, labels)
+
+print(G.edges['sw21-r224', 'sw22-r224'])
+matplotlib.pyplot.show()
