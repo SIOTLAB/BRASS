@@ -13,13 +13,14 @@ RACK = 224
 ips = {
     "sw21-r224" : "10.16.224.21",
     "sw22-r224" : "10.16.224.22",
-    # "sw23-r224" : "10.16.224.23",
+    "sw23-r224" : "10.16.224.23",
+    "sw24-r224" : "10.16.224.24"
 }
 
 username = "admin"
 base_password = "$iot" + str(RACK) + "-"
 
-G = nx.Graph()
+G = nx.MultiGraph()
 
 for name, ip in ips.items():
     print(name + " lldp info")
@@ -56,12 +57,9 @@ for name, ip in ips.items():
 
     print("--------------------------------")
 
-G.add_edge("sw21-r224", "sw22-r224")
-G.edges['sw21-r224', 'sw22-r224']['weight'] = 200
 labels = nx.get_edge_attributes(G, "weight")
 pls = nx.spring_layout(G)
 nx.draw_networkx(G, pls)
 nx.draw_networkx_edge_labels(G, pls, labels)
 
-print(G.edges['sw21-r224', 'sw22-r224'])
 matplotlib.pyplot.show()
