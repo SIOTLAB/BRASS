@@ -3,18 +3,19 @@
 import threading
 import time
 
+import controller
+
 # Shared Memory variables
 CAPACITY = 10 # this is the number of threads running at once, should be adjusted to max # of devices that can be requesting bandwidth at a time (?)
 buffer = [-1 for i in range(CAPACITY)]
 in_index = 0
 out_index = 0
+queue = controller.queue # ensure that these actually point to the same obj
 
 # Declaring Semaphores
 mutex = threading.Semaphore()
 empty = threading.Semaphore(CAPACITY)
 full = threading.Semaphore(0)
-
-queue = [7, 2, 3, 5, 6, 2, 8] # global array of requests as they come in from end devices
 
 # Producer Thread Class
 class Producer(threading.Thread):
@@ -52,14 +53,16 @@ class Consumer(threading.Thread):
             full.acquire()
             mutex.acquire()
         
-            item = buffer[out_index] # instead of just grabbing the item and printing it, run a function to actually make the reservation request where needed
+            item = buffer[out_index]
             out_index = (out_index + 1) % CAPACITY
+
+            controller.establishReservation(item)
             print("request accepted : ", item)
         
             mutex.release()
             empty.release()
         
-            time.sleep(0.5) # remove or decrease
+            time.sleep(0.5) # remove or decrease, not sure if needed
         
             itemsInQueue = len(queue)
  
