@@ -3,7 +3,6 @@
 from importsAndGlobal import CAPACITY, buffer, in_index, out_index, queue, mutex, empty, full, establishReservation, threading
 import time
 
-
 class Producer(threading.Thread):
     def run(self):
     
@@ -18,7 +17,6 @@ class Producer(threading.Thread):
             nextItem = queue.pop()
             buffer[in_index] = nextItem
             in_index = (in_index + 1) % CAPACITY
-            print("request produced : ", nextItem)
             
             mutex.release()
             full.release()
@@ -42,7 +40,6 @@ class Consumer(threading.Thread):
             out_index = (out_index + 1) % CAPACITY
 
             establishReservation(item)
-            print("request accepted : ", item)
         
             mutex.release()
             empty.release()

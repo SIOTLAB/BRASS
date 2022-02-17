@@ -32,7 +32,7 @@ def createMockReqs():
 def discoverTopology(): # rerun this as needed
     return 0
 
-def establishTcp(): # on demand from end devices
+def establishTcp(): # run on demand from end devices
     return 0
 
 def cleanReservations():
@@ -55,6 +55,4 @@ producer.start()
 producer.join()
 consumer.join()
 
-print(importsAndGlobal.establishedRequests)
-
-cleanReservations()
+cleanReservations() # this needs to be run consistently

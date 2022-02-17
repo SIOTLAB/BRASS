@@ -26,6 +26,7 @@ def establishReservation(resReq):
     resReq.id = currentId
     expirationTime = datetime.datetime.utcnow() + datetime.timedelta(minutes=resReq.duration)
     resReq.expirationTime = expirationTime
+    
     pprint(vars(resReq))
     # do whatever it takes to establish the reservation with other devices
 
