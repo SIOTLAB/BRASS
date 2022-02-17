@@ -10,44 +10,51 @@
 # - this processing involves establishing the request, then sending out a confirmation to the end device involved
 # - "show my reservations" command to see reservation requests per end device
 
+import importsAndGlobal
 from random import randint
-from pprint import pprint
-
+import queueManager
 class ReservationRequest:
   def __init__(self, senderIp, destIp, bandwidth, duration):
     self.senderIp = senderIp
     self.destIp = destIp
     self.bandwidth = bandwidth
-    self.duration = duration
+    self.duration = duration # duration from when the request is established on the controller, measured in minutes
+    self.expirationTime = None
     self.id = None # figure out what this should be initialized to
 
-queue = [] # global array of requests as they come in from end devices
+def createMockReqs():
+    for _ in range(5):
+        tmpIp1 = ".".join(str(randint(0, 255)) for _ in range(4))
+        tmpIp2 = ".".join(str(randint(0, 255)) for _ in range(4))
+        tmpReq = ReservationRequest(tmpIp1, tmpIp2, randint(1, 5), randint(10, 100))
+        importsAndGlobal.queue.append(tmpReq)
 
-for i in range(10):
-    tmpIp1 = ".".join(str(randint(0, 255)) for _ in range(4))
-    tmpIp2 = ".".join(str(randint(0, 255)) for _ in range(4))
-    tmpReq = ReservationRequest(tmpIp1, tmpIp2, randint(1, 5), randint(10, 100))
-    queue.append(tmpReq)
-
-id = 0 # naive solution that simply increments id; we can cahnge this so that IDs are reused
-establishedRequests = {}
-
-def discoverTopology():
+def discoverTopology(): # rerun this as needed
     return 0
 
-def establishTcp():
+def establishTcp(): # on demand from end devices
     return 0
 
-def establishReservation(resReq):
-    # generate an ID for this reservation
-    # return the ID generated and send to the end device
-    id = 0
-    currentId = id
-    id += 1
-    resReq.id = currentId
+def cleanReservations():
+    for entry in importsAndGlobal.establishedRequests.values():
+        currentTime = importsAndGlobal.datetime.datetime.utcnow()
+        if entry.expirationTime < currentTime:
+            importsAndGlobal.establishedRequests.popitem(entry)
 
-    pprint(vars(resReq))
-    # do whatever it takes to establish the reservation with other devices
+createMockReqs()
 
-    establishedRequests[currentId] = resReq
-    return currentId
+# create threads
+producer = queueManager.Producer()
+consumer = queueManager.Consumer()
+
+# start threads
+consumer.start()
+producer.start()
+
+# wait for threads to complete
+producer.join()
+consumer.join()
+
+print(importsAndGlobal.establishedRequests)
+
+cleanReservations()
