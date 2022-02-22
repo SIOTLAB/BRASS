@@ -16,7 +16,8 @@ class Discoverer(threading.Thread):
             data = conn.recv(BUFFER_SIZE)
             if not data:
                 break
-            print("received data:", data)
+            data_str = data.decode()
+            print("received data:", data_str)
             conn.send(data)  # echo
         conn.close()
 

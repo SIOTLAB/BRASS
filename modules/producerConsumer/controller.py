@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # this is just framework for now, but ultimately can be the file that facilitates a variety of other tasks/connections
 
