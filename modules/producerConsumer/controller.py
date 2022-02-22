@@ -13,6 +13,8 @@
 import importsAndGlobal
 from random import randint
 import queueManager
+import socket
+
 class ReservationRequest:
   def __init__(self, senderIp, destIp, bandwidth, duration):
     self.senderIp = senderIp
@@ -30,7 +32,7 @@ def createMockReqs():
         importsAndGlobal.queue.append(tmpReq)
 
 def discoverTopology(): # rerun this as needed
-    return 0
+    return
 
 def establishTcp(): # run on demand from end devices
     return 0
@@ -44,15 +46,18 @@ def cleanReservations():
 createMockReqs()
 
 # create threads
+discoverer = queueManager.Discoverer()
 producer = queueManager.Producer()
 consumer = queueManager.Consumer()
 
 # start threads
+discoverer.start()
 consumer.start()
 producer.start()
 
 # wait for threads to complete
 producer.join()
 consumer.join()
+discoverer.join()
 
 cleanReservations() # this needs to be run consistently
