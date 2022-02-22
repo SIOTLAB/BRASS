@@ -2,6 +2,11 @@ from pprint import pprint
 import datetime
 import threading
 
+TCP_IP = '10.16.224.150'
+TCP_PORT = 5005
+BUFFER_SIZE = 20  # Normally 1024, but we want fast response
+
+
 queue = [] # global array of requests as they come in from end devices
 id = 0 # naive solution that simply increments id; we can change this so that IDs are reused
 establishedRequests = {}

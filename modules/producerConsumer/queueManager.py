@@ -1,15 +1,11 @@
 #!/usr/bin/python
 
-from importsAndGlobal import CAPACITY, buffer, in_index, out_index, queue, mutex, empty, full, establishReservation, threading
+from importsAndGlobal import CAPACITY, buffer, in_index, out_index, queue, mutex, empty, full, establishReservation, threading, TCP_IP, TCP_PORT, BUFFER_SIZE
 import socket
 import time
 
 class Discoverer(threading.Thread):
     def run(self):
-        TCP_IP = '10.16.252.11'
-        TCP_PORT = 5005
-        BUFFER_SIZE = 20  # Normally 1024, but we want fast response
-
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind((TCP_IP, TCP_PORT))
         s.listen(1)
