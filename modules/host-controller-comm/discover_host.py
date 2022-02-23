@@ -24,7 +24,7 @@ sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 # sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 sock.settimeout(5)
 
-IP = '10.16.224.255'
+IP = '10.16.224.150'
 PORT = 9434
 server_address = (IP, PORT)
 msgPrefix = 'pfg_ip_broadcast_cl'
