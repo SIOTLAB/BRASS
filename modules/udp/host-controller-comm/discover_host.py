@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import json
 from socket import *
 import sys
 import time
@@ -15,6 +16,7 @@ parser.add_argument('dura', metavar='sec', type=float,
                     help='duration of reservation in seconds')
 
 args = parser.parse_args()
+message = json.dumps(vars(args)) # JSON FORMATTED ARGUMENTS
 
 # CREATE UDP SOCKET
 sock = socket(AF_INET, SOCK_DGRAM)
@@ -25,25 +27,35 @@ sock.settimeout(5)
 IP = '127.0.0.1'
 PORT = 9434
 server_address = (IP, PORT)
-message = 'pfg_ip_broadcast_cl'
+msgPrefix = 'pfg_ip_broadcast_cl'
+svrPrefix = 'pfg_ip_response_serv'
 
+timeout_count = 0
 try:
 	while True:
 		# SEND DATA
 		print('sending: ' + message)
-		sent = sock.sendto(message.encode(), server_address)
+		sent = sock.sendto((msgPrefix + message).encode(), server_address)
 
 		# RECEIVE RESPONSE
-		print('waiting to receive')
-		data, server = sock.recvfrom(4096)
-		if data.decode('UTF-8') == 'pfg_ip_response_serv':
-			print('Received confirmation')
-			print('Server ip: ' + str(server[0]) )
-			break
-		else:
-			print('Verification failed')
-		
-		print('Trying again...')
+		try:
+			print('waiting for response')
+			data, server = sock.recvfrom(4096)
+			if data.decode('UTF-8').startswith(svrPrefix):
+				print('received confirmation')
+				print('server ip: ' + str(server[0]) )
+				break
+			else:
+				print('verification failed')
+				print('')
+		except timeout:
+			timeout_count += 1
+			print('\ttimeout ' + str(timeout_count))
+			if (timeout_count == 5):
+				break
+			else:
+				print('\ttrying again...')
+			print('')
 	
 	
 finally:	
