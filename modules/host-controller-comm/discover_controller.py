@@ -6,8 +6,9 @@ import sys
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-IP = '127.0.0.1'
+IP = '127.0.0.255'
 PORT = 9434
 server_address = (IP, PORT)
 sock.bind(server_address)

@@ -21,10 +21,10 @@ message = json.dumps(vars(args)) # JSON FORMATTED ARGUMENTS
 # CREATE UDP SOCKET
 sock = socket(AF_INET, SOCK_DGRAM)
 sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+# sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 sock.settimeout(5)
 
-IP = '127.0.0.1'
+IP = '10.16.224.255'
 PORT = 9434
 server_address = (IP, PORT)
 msgPrefix = 'pfg_ip_broadcast_cl'
