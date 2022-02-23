@@ -1,13 +1,15 @@
+#!/usr/bin/env python
+
 import socket 
 import sys
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-server_address = ('10.16.252.11', 9434)
-
+IP = '127.0.0.1'
+PORT = 9434
+server_address = (IP, PORT)
 sock.bind(server_address)
-
 response = 'pfg_ip_response_serv'
 
 while True:
