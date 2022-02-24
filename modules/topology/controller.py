@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Python script that the controller will run to send
 # commands in order to recieve topology information from client switches
 
@@ -20,10 +21,10 @@ ips = {
 username = "admin"
 base_password = "$iot" + str(RACK) + "-"
 
-G = nx.MultiGraph()
+G = nx.Graph()
 
 for name, ip in ips.items():
-    print(name + " lldp info")
+    print("==== " + name + " lldp info ====")
     sw_num = name[2:4]
     password = base_password + sw_num
     url = 'https://{}:{}@{}/command-api'.format(username, password, ip)
@@ -50,14 +51,23 @@ for name, ip in ips.items():
     # print(neighbors)
 
     for n in neighbors:
+        print(n['port'])
+
+        payload[0] = "show interfaces " + n['port'] + " status"
+        response = eapi_conn.runCmds(1, payload)[0]
+
         neighbor_name = n["neighborDevice"]
         neighbor_ip = ips[neighbor_name]
-        G.add_edge(name, neighbor_name, 0)
+
+        G.add_edge(name, neighbor_name)
+        bandwidth = response['interfaceStatuses'][n['port']]['bandwidth']
+        G[name][neighbor_name]['bandwidth'] = bandwidth
         print(neighbor_name + " : " + neighbor_ip)
 
-    print("--------------------------------")
+    # print("-" * 30)
+    print("\n")
 
-labels = nx.get_edge_attributes(G, "weight")
+labels = nx.get_edge_attributes(G, "bandwidth")
 pls = nx.spring_layout(G)
 nx.draw_networkx(G, pls)
 nx.draw_networkx_edge_labels(G, pls, labels)
