@@ -1,0 +1,12 @@
+Establish a policy map for each request.
+    Creating a class map   
+        Creating an ACL for that specific source/dest
+        -- Some other way of distinguising with like a header value?
+        Apply ACL to class map
+    Apply class map to policy map
+
+Use policer on the class map in policier
+
+
+https://www.arista.com/en/um-eos/eos-quality-of-service#xx1205669
+
