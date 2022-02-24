@@ -4,7 +4,7 @@ from importsAndGlobal import CAPACITY, buffer, in_index, out_index, queue, mutex
 import socket
 import time
 
-class Discoverer(threading.Thread):
+class Discoverer(threading.Thread): # Communicate with switches
     def run(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind((TCP_IP, TCP_PORT))
@@ -21,7 +21,7 @@ class Discoverer(threading.Thread):
             conn.send(data)  # echo
         conn.close()
 
-class Producer(threading.Thread):
+class Producer(threading.Thread):   #?
     def run(self):
     
         global CAPACITY, buffer, in_index, out_index, queue
@@ -43,7 +43,7 @@ class Producer(threading.Thread):
             
             itemsInQueue = len(queue)
 
-class Consumer(threading.Thread):
+class Consumer(threading.Thread):   # Handle queued requests
     def run(self):
     
         global CAPACITY, buffer, in_index, out_index, queue
