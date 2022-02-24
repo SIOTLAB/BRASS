@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 import json
+import queue
 import socket 
 import sys
+from importsAndGlobal import queue 
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -23,11 +25,12 @@ try:
 		if data.startswith(msgPrefix):
 			data = data[len(msgPrefix):]
 			data = json.loads(data.decode('UTF-8'))
+			queue.append(data)
 
-			print('received:')
-			print('\tdestination: ' + data['dest'])
-			print('\treservation: ' + str(data['resv']))
-			print('\tduration: ' + str(data['dura']))
+			# print('received:')
+			# print('\tdestination: ' + data['dest'])
+			# print('\treservation: ' + str(data['resv']))
+			# print('\tduration: ' + str(data['dura']))
 			sent = sock.sendto(svrPrefix.encode(), address)
 except KeyboardInterrupt:
 	print('close')
