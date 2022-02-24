@@ -6,13 +6,19 @@ from socket import *
 import sys
 import time
 
+def duration_type(x):
+    x = float(x)
+    if x > 3600:
+        raise argparse.ArgumentTypeError("Maximum duration is 1 hour")
+    return x
+
 # PARSE ARGUMENTS
 parser = argparse.ArgumentParser(description='Request an amount of reservation from a network controller.')
 parser.add_argument('dest', metavar='A.B.C.D', type=str,
                     help='destination IP for reserved communication')
 parser.add_argument('resv', metavar='KB', type=int,
                     help='amount of bandwidth reservation in KiloBytes')
-parser.add_argument('dura', metavar='sec', type=float,
+parser.add_argument('dura', metavar='sec', type=duration_type,
                     help='duration of reservation in seconds')
 
 args = parser.parse_args()
