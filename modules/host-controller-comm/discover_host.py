@@ -58,12 +58,11 @@ try:
             print("waiting for response")
             data, server = sock.recvfrom(4096)
             if data.decode("UTF-8").startswith(svrPrefix):
-                print("received confirmation")
+                print("received: " + data[len(svrPrefix):])
                 print("server ip: " + str(server[0]))
                 break
             else:
-                print("verification failed")
-                print("")
+                print("verification failed\n")
         except timeout:
             timeout_count += 1
             print("\ttimeout " + str(timeout_count))

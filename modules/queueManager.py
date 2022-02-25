@@ -22,7 +22,19 @@ class Discoverer(threading.Thread): # Communicate with switches
             conn.send(data)  # echo
         conn.close()
 
+rsrv_success = [
+    "Reservation established"
+]
+rsrv_error = [
+    "Bandwidth not available",
+    "Path does not exist",
+    "Reservation Failed"
+]
+
 class HostManager(threading.Thread):
+    condition = threading.Condition()
+    message = ""
+
     def run(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -45,14 +57,20 @@ class HostManager(threading.Thread):
                 queue.append(data)  # Push reservation request to queue
 
                 # Wait for response from main thread:
-                #   YES: the reservation could be instantiated
-                # if : sent = s.sendto(svrPrefix.encode(), address)
+                self.condition.wait()
+                #   >> main thread should call HostManager.condition.notify()
 
-                #   NO: the reservation could NOT be instantiated
-                # if : sent = s.sendto('Reservation could not be fulfilled'.encode(), address)
+                #   if message starts with YES: the reservation could be instantiated
+                if self.message.startswith("YES"):
+                    s.sendto((svrPrefix + rsrv_success[0]).encode(), address)
 
-                #   CLOSE: quit the host manager thread(s)
-                # if : break
+                #   if message starts with NO: the reservation could NOT be instantiated
+                if self.message.startswith("NO"):
+                    s.sendto((svrPrefix + rsrv_error[2]).encode(), address)
+
+                #   if message starts with CLOSE: quit the host manager thread(s)
+                if self.message.startswith("CLOSE"):
+                    break
 
 # class Producer(threading.Thread):   # For testing?
 #     def run(self):
