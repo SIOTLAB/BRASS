@@ -1,39 +1,25 @@
-from pprint import pprint
-import datetime
 import threading
+import datetime
+from queue import Queue
 
 TCP_IP = '10.16.224.150'
 TCP_PORT = 5005
 BUFFER_SIZE = 20  # Normally 1024, but we want fast response
 
+msgPrefix = 'pfg_ip_broadcast_cl'
+svrPrefix = 'pfg_ip_response_serv'
 
-queue = [] # global array of requests as they come in from end devices
+queue = Queue() # global array of requests as they come in from end devices
 id = 0 # naive solution that simply increments id; we can change this so that IDs are reused
 establishedRequests = {}
 
-# shared memory variables
-CAPACITY = 10 # this is the number of threads running at once, should be adjusted to max # of devices that can be requesting bandwidth at a time (?)
-buffer = [-1 for i in range(CAPACITY)]
-in_index = 0
-out_index = 0
-
-# declaring semaphores
-mutex = threading.Semaphore()
-empty = threading.Semaphore(CAPACITY)
-full = threading.Semaphore(0)
-
-def establishReservation(resReq):
-    # generate an ID for this reservation
-    # return the ID generated and send to the end device
-    global id
-    currentId = id
-    id += 1
-    resReq.id = currentId
-    expirationTime = datetime.datetime.utcnow() + datetime.timedelta(minutes=resReq.duration)
-    resReq.expirationTime = expirationTime
-    
-    pprint(vars(resReq))
-    # do whatever it takes to establish the reservation with other devices
-
-    establishedRequests[currentId] = resReq
-    return currentId
+class ReservationRequest:
+  def __init__(self, senderIp, destIp, bandwidth, duration, socket, address):
+    self.senderIp = senderIp
+    self.destIp = destIp
+    self.bandwidth = bandwidth
+    self.duration = duration # duration is measured from when the request is established on the controller, scale is in seconds
+    self.socket = socket
+    self.address = address
+    self.expirationTime = None
+    self.id = None # id is added when reservation is established
