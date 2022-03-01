@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from importsAndGlobal import CAPACITY, buffer, in_index, out_index, queue, mutex, empty, full, establishReservation, threading, TCP_IP, TCP_PORT, BUFFER_SIZE
+from importsAndGlobal import CAPACITY, buffer, in_index, out_index, queue, mutex, empty, full, establishReservation, threading, TCP_IP, TCP_PORT, BUFFER_SIZE, ips
 import json
 import socket
 import time
@@ -11,14 +11,16 @@ class Discoverer(threading.Thread): # Communicate with switches
         s.bind((TCP_IP, TCP_PORT))
         s.listen(1)
 
-        conn, addr = s.accept()
-        print('Connection address:', addr)
         while 1:
+            conn, addr = s.accept()
+            print('Connection address:', addr)
             data = conn.recv(BUFFER_SIZE)
             if not data:
                 break
             data_str = data.decode()
             print("received data:", data_str)
+            ips[data_str] = addr[0]
+            print(ips)
             conn.send(data)  # echo
         conn.close()
 
@@ -72,27 +74,27 @@ class HostManager(threading.Thread):
                 if self.message.startswith("CLOSE"):
                     break
 
-# class Producer(threading.Thread):   # For testing?
-#     def run(self):
+class Producer(threading.Thread):   # For testing?
+    def run(self):
     
-#         global CAPACITY, buffer, in_index, out_index, queue
-#         global mutex, empty, full
+        global CAPACITY, buffer, in_index, out_index, queue
+        global mutex, empty, full
     
-#         itemsInQueue = len(queue)
+        itemsInQueue = len(queue)
         
-#         while itemsInQueue > 0:
-#             empty.acquire()
-#             mutex.acquire()
-#             nextItem = queue.pop()
-#             buffer[in_index] = nextItem
-#             in_index = (in_index + 1) % CAPACITY
+        while itemsInQueue > 0:
+            empty.acquire()
+            mutex.acquire()
+            nextItem = queue.pop()
+            buffer[in_index] = nextItem
+            in_index = (in_index + 1) % CAPACITY
             
-#             mutex.release()
-#             full.release()
+            mutex.release()
+            full.release()
             
-#             time.sleep(1)
+            time.sleep(1)
             
-#             itemsInQueue = len(queue)
+            itemsInQueue = len(queue)
 
 class Consumer(threading.Thread):   # Handle queued requests
     def run(self):

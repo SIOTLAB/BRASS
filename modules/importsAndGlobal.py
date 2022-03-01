@@ -2,7 +2,7 @@ from pprint import pprint
 import datetime
 import threading
 
-TCP_IP = '10.16.224.150'
+TCP_IP = '10.16.252.10'
 TCP_PORT = 5005
 BUFFER_SIZE = 20  # Normally 1024, but we want fast response
 
@@ -21,6 +21,8 @@ out_index = 0
 mutex = threading.Semaphore()
 empty = threading.Semaphore(CAPACITY)
 full = threading.Semaphore(0)
+
+ips = {}
 
 def establishReservation(resReq):
     # generate an ID for this reservation
