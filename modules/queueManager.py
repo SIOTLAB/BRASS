@@ -43,7 +43,7 @@ def errorChecking(resReq):
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    IP = '10.16.224.150'
+    IP = '10.16.224.150' # server IP
     PORT = 9434
     server_address = (IP, PORT)
     s.bind(server_address)
@@ -58,7 +58,7 @@ def errorChecking(resReq):
 
     #   if message starts with CLOSE: quit the host manager thread(s)
     if message.startswith("CLOSE"):
-        # return somethign to the socket??
+        # return something to the socket??
         return False
 
     return True
@@ -91,8 +91,8 @@ def consumer(queue, lock):   # Handle queued requests
     while True:
         item = queue.get()
         with lock:            
-            #if (errorChecking(item)):
-            if (True):
+            if (errorChecking(item)):
+            #if (True):
                 resReq = prepareRequest(item)
                 establishReservation(resReq)
         queue.task_done()
