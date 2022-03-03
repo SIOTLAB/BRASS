@@ -2,7 +2,7 @@ import threading
 import datetime
 from queue import Queue
 
-TCP_IP = '10.16.224.150'
+TCP_IP = '10.16.252.10'
 TCP_PORT = 5005
 BUFFER_SIZE = 20  # Normally 1024, but we want fast response
 

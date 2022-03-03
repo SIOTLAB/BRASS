@@ -12,14 +12,16 @@ class Discoverer(threading.Thread): # Communicate with switches
         s.bind((TCP_IP, TCP_PORT))
         s.listen(1)
 
-        conn, addr = s.accept()
-        print('Connection address:', addr)
         while 1:
+            conn, addr = s.accept()
+            print('Connection address:', addr)
             data = conn.recv(BUFFER_SIZE)
             if not data:
                 break
             data_str = data.decode()
             print("received data:", data_str)
+            ips[data_str] = addr[0]
+            print(ips)
             conn.send(data)  # echo
         conn.close()
 
