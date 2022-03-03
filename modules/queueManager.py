@@ -32,22 +32,36 @@ rsrv_error = [
     "Reservation Failed"
 ]
 
+def getMessage(resReq):
+    return "YES wow it works so cool"
+
 def errorChecking(resReq):
-    s = resReq.socket
-    #   >> main thread should call HostManager.condition.notify()
-    HostManager.condition.notify()
+
+    message = getMessage(resReq)
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+    IP = '10.16.224.150'
+    PORT = 9434
+    server_address = (IP, PORT)
+    s.bind(server_address)
+
     #   if message starts with YES: the reservation could be instantiated
-    if HostManager.message.startswith("YES"):
+    if message.startswith("YES"):
         s.sendto((svrPrefix + rsrv_success[0]).encode(), resReq.address)
 
     #   if message starts with NO: the reservation could NOT be instantiated
-    if HostManager.message.startswith("NO"):
+    if message.startswith("NO"):
         s.sendto((svrPrefix + rsrv_error[2]).encode(), resReq.address)
 
     #   if message starts with CLOSE: quit the host manager thread(s)
-    if HostManager.message.startswith("CLOSE"):
-        # do something??
-        return -1
+    if message.startswith("CLOSE"):
+        # return somethign to the socket??
+        return False
+
+    return True
 
 def prepareRequest(resReq):
     # generate an ID for this reservation
@@ -61,6 +75,8 @@ def prepareRequest(resReq):
 
     pprint(vars(resReq))
 
+    return resReq
+
 def establishReservation(resReq):
     currentId = resReq.id
     
@@ -71,18 +87,18 @@ def establishReservation(resReq):
 
 def consumer(queue, lock):   # Handle queued requests
     # block on empty queue
+
     while True:
         item = queue.get()
-        with lock:
-            errorChecking(item)
-            resReq = prepareRequest(item)
-            establishReservation(resReq)
+        with lock:            
+            #if (errorChecking(item)):
+            if (True):
+                resReq = prepareRequest(item)
+                establishReservation(resReq)
         queue.task_done()
 
 class HostManager(threading.Thread):
-    condition = threading.Condition()
-    message = ""
-
+ 
     def run(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
