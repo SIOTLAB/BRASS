@@ -77,24 +77,29 @@ def prepareRequest(resReq):
 
     return resReq
 
-def establishReservation(resReq):
-    currentId = resReq.id
-    
-    # do whatever it takes to establish the reservation with other devices
-
-    establishedRequests[currentId] = resReq
-    return currentId
+def establishReservation(resReq): # returns whether or not the request was established via a message
+    message = "CLOSE"
+    # reservation could be instantiated
+    # if(there is enough bandwidth for the request):
+    if(True):
+        currentId = resReq.id
+        establishedRequests[currentId] = resReq
+        message = "YES"
+    else:
+        # reservation could not be instantiated
+        message = "NO"
+    # if message starts with CLOSE: quit the host manager thread(s)
+    return message
 
 def consumer(queue, lock):   # Handle queued requests
     # block on empty queue
 
     while True:
         item = queue.get()
-        with lock:            
-            if (errorChecking(item)):
-            #if (True):
-                resReq = prepareRequest(item)
-                establishReservation(resReq)
+        with lock:
+            resReq = prepareRequest(item)          
+            message = establishReservation(resReq)
+            errorChecking(message)
         queue.task_done()
 
 class HostManager(threading.Thread):
