@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
 import json
-import queue
-import socket 
-import sys
+import socket
 from importsAndGlobal import queue 
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -25,7 +23,7 @@ try:
 		if data.startswith(msgPrefix):
 			data = data[len(msgPrefix):]
 			data = json.loads(data.decode('UTF-8'))
-			queue.append(data)
+			queue.put(data)
 
 			# print('received:')
 			# print('\tdestination: ' + data['dest'])

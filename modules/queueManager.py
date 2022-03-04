@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
-from importsAndGlobal import CAPACITY, buffer, in_index, out_index, queue, mutex, empty, full, establishReservation, threading, TCP_IP, TCP_PORT, BUFFER_SIZE, ips
+from distutils.log import error
+from importsAndGlobal import queue, establishedRequests, threading, datetime, TCP_IP, TCP_PORT, BUFFER_SIZE, msgPrefix, svrPrefix, ReservationRequest, id
 import json
 import socket
-import time
+from pprint import pprint
 
 class Discoverer(threading.Thread): # Communicate with switches
     def run(self):
@@ -33,10 +34,78 @@ rsrv_error = [
     "Reservation Failed"
 ]
 
-class HostManager(threading.Thread):
-    condition = threading.Condition()
-    message = ""
+def getMessage(resReq):
+    return "YES wow it works so cool"
 
+def errorChecking(resReq):
+
+    message = getMessage(resReq)
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+    IP = '10.16.224.150' # server IP
+    PORT = 9434
+    server_address = (IP, PORT)
+    s.bind(server_address)
+
+    #   if message starts with YES: the reservation could be instantiated
+    if message.startswith("YES"):
+        s.sendto((svrPrefix + rsrv_success[0]).encode(), resReq.address)
+
+    #   if message starts with NO: the reservation could NOT be instantiated
+    if message.startswith("NO"):
+        s.sendto((svrPrefix + rsrv_error[2]).encode(), resReq.address)
+
+    #   if message starts with CLOSE: quit the host manager thread(s)
+    if message.startswith("CLOSE"):
+        # return something to the socket??
+        return False
+
+    return True
+
+def prepareRequest(resReq):
+    # generate an ID for this reservation
+    # return the ID generated and send to the end device
+    global id
+    currentId = id
+    id += 1
+    resReq.id = currentId
+    expirationTime = datetime.datetime.utcnow() + datetime.timedelta(minutes=resReq.duration)
+    resReq.expirationTime = expirationTime
+
+    pprint(vars(resReq))
+
+    return resReq
+
+def establishReservation(resReq): # returns whether or not the request was established via a message
+    message = "CLOSE"
+    # reservation could be instantiated
+    # if(there is enough bandwidth for the request):
+    if(True):
+        currentId = resReq.id
+        establishedRequests[currentId] = resReq
+        message = "YES"
+    else:
+        # reservation could not be instantiated
+        message = "NO"
+    # if message starts with CLOSE: quit the host manager thread(s)
+    return message
+
+def consumer(queue, lock):   # Handle queued requests
+    # block on empty queue
+
+    while True:
+        item = queue.get()
+        with lock:
+            resReq = prepareRequest(item)          
+            message = establishReservation(resReq)
+            errorChecking(message)
+        queue.task_done()
+
+class HostManager(threading.Thread):
+ 
     def run(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -46,8 +115,6 @@ class HostManager(threading.Thread):
         PORT = 9434
         server_address = (IP, PORT)
         s.bind(server_address)
-        msgPrefix = 'pfg_ip_broadcast_cl'
-        svrPrefix = 'pfg_ip_response_serv'
 
         while True:
             data, address = s.recvfrom(4096)
@@ -56,65 +123,5 @@ class HostManager(threading.Thread):
             if data.startswith(msgPrefix):
                 data = data[len(msgPrefix):]
                 data = json.loads(data.decode('UTF-8')) # Host info stored in dict
-                queue.append(data)  # Push reservation request to queue
-
-                # Wait for response from main thread:
-                self.condition.wait()
-                #   >> main thread should call HostManager.condition.notify()
-
-                #   if message starts with YES: the reservation could be instantiated
-                if self.message.startswith("YES"):
-                    s.sendto((svrPrefix + rsrv_success[0]).encode(), address)
-
-                #   if message starts with NO: the reservation could NOT be instantiated
-                if self.message.startswith("NO"):
-                    s.sendto((svrPrefix + rsrv_error[2]).encode(), address)
-
-                #   if message starts with CLOSE: quit the host manager thread(s)
-                if self.message.startswith("CLOSE"):
-                    break
-
-class Producer(threading.Thread):   # For testing?
-    def run(self):
-    
-        global CAPACITY, buffer, in_index, out_index, queue
-        global mutex, empty, full
-    
-        itemsInQueue = len(queue)
-        
-        while itemsInQueue > 0:
-            empty.acquire()
-            mutex.acquire()
-            nextItem = queue.pop()
-            buffer[in_index] = nextItem
-            in_index = (in_index + 1) % CAPACITY
-            
-            mutex.release()
-            full.release()
-            
-            time.sleep(1)
-            
-            itemsInQueue = len(queue)
-
-class Consumer(threading.Thread):   # Handle queued requests
-    def run(self):
-    
-        global CAPACITY, buffer, in_index, out_index, queue
-        global mutex, empty, full
-    
-        itemsInQueue = len(queue)
-        while itemsInQueue > 0:
-            full.acquire()
-            mutex.acquire()
-        
-            item = buffer[out_index]
-            out_index = (out_index + 1) % CAPACITY
-
-            establishReservation(item)
-        
-            mutex.release()
-            empty.release()
-
-            time.sleep(1) # remove or decrease, not sure if needed
-        
-            itemsInQueue = len(queue)
+                data = ReservationRequest(*data, s, address)
+                queue.put(data)  # Push reservation request to queue
