@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 from distutils.log import error
-from importsAndGlobal import queue, establishedRequests, threading, datetime, TCP_IP, TCP_PORT, BUFFER_SIZE, msgPrefix, svrPrefix, ReservationRequest, id
+from importsAndGlobal import queue, establishedRequests, threading, datetime, TCP_IP, TCP_PORT, BUFFER_SIZE, msgPrefix, svrPrefix, ReservationRequest, id, ips
 import json
 import socket
 from pprint import pprint
@@ -37,16 +37,13 @@ rsrv_error = [
 def getMessage(resReq):
     return "YES wow it works so cool"
 
-def errorChecking(resReq):
-
-    message = getMessage(resReq)
-
+def errorChecking(resReq, message):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    IP = '10.16.224.150' # server IP
-    PORT = 9434
+    IP = resReq.ip
+    PORT = resReq.port
     server_address = (IP, PORT)
     s.bind(server_address)
 
@@ -99,9 +96,9 @@ def consumer(queue, lock):   # Handle queued requests
     while True:
         item = queue.get()
         with lock:
-            resReq = prepareRequest(item)          
+            resReq = prepareRequest(item)
             message = establishReservation(resReq)
-            errorChecking(message)
+            errorChecking(resReq, message)
         queue.task_done()
 
 class HostManager(threading.Thread):
@@ -115,13 +112,13 @@ class HostManager(threading.Thread):
         PORT = 9434
         server_address = (IP, PORT)
         s.bind(server_address)
-
+        
         while True:
             data, address = s.recvfrom(4096)
             data = str(data.decode())
-            
+
             if data.startswith(msgPrefix):
                 data = data[len(msgPrefix):]
                 data = json.loads(data.decode('UTF-8')) # Host info stored in dict
-                data = ReservationRequest(*data, s, address)
+                data = ReservationRequest(*data, IP, PORT)
                 queue.put(data)  # Push reservation request to queue

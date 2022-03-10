@@ -17,7 +17,7 @@ def createMockReqs():
     for _ in range(5):
         tmpIp1 = ".".join(str(randint(0, 255)) for _ in range(4))
         tmpIp2 = ".".join(str(randint(0, 255)) for _ in range(4))
-        tmpReq = ReservationRequest(tmpIp1, tmpIp2, randint(1, 5), randint(100, 1000), 0, 0)
+        tmpReq = ReservationRequest(tmpIp1, tmpIp2, randint(1, 5), randint(100, 1000), "234.234.23.4.2", 3454)
         queue.put(tmpReq)
 
 def discoverTopology(): # rerun this as needed
