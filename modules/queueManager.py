@@ -6,6 +6,9 @@ import json
 import socket
 from pprint import pprint
 
+#
+## SWITCH HANDLER
+#
 class Discoverer(threading.Thread): # Communicate with switches
     def run(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -21,9 +24,15 @@ class Discoverer(threading.Thread): # Communicate with switches
             data_str = data.decode()
             print("received data:", data_str)
             ips[data_str] = addr[0]
+            # TODO: receive and handle ARP table of end hosts
             print(ips)
             conn.send(data)  # echo
         conn.close()
+
+#
+## MAIN THREAD
+#   - CORE LOGIC
+#
 
 rsrv_success = [
     "Reservation established"
@@ -101,7 +110,11 @@ def consumer(queue, lock):   # Handle queued requests
             errorChecking(resReq, message)
         queue.task_done()
 
-class HostManager(threading.Thread):
+#
+## END DEVICE HANDLER
+#
+
+class HostManager(threading.Thread):    # Communicate with hosts
  
     def run(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
