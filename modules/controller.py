@@ -13,6 +13,8 @@ from random import randint
 import queueManager
 
 def createMockReqs():
+    # Temporary for testing
+    #   To be removed
     global queue
     for _ in range(5):
         tmpIp1 = ".".join(str(randint(0, 255)) for _ in range(4))
