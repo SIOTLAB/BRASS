@@ -36,19 +36,23 @@ def cleanReservations():
 
 createMockReqs()
 
-# create threads
-#discoverer = queueManager.SwitchHandler()
+# CREATE THREADS
+switchHandler = queueManager.SwitchHandler()
+hostManager = queueManager.HostManager()
 
 lock = threading.Lock()
-consumer = threading.Thread(target=queueManager.consumer, args=(queue, lock))
-consumer.daemon = True
+reservationHandler = threading.Thread(target=queueManager.consumer, args=(queue, lock), daemon=True)
 
-# start threads
-#discoverer.start()
-consumer.start()
+# START THREADS
+switchHandler.start()
+hostManager.start()
+reservationHandler.start()
 
-# wait for threads to complete
+# WAIT FOR THREADS TO COMPLETE
 queue.join()
-#discoverer.join()
+switchHandler.join()
+
+hostManager.kill()
+hostManager.join()
 
 cleanReservations() # this needs to be run consistently in 
