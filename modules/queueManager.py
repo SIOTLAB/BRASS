@@ -64,9 +64,12 @@ def prepareRequest(resReq):
     return resReq
 
 def establishReservation(resReq): # returns whether or not the request was established via a message
-    message = "CLOSE"
-    # reservation could be instantiated
+    message = "CLOSE"   # reservation could be instantiated
+
+    # TODO
     # if(there is enough bandwidth for the request):
+    #       Check NetworkX
+
     if(True):
         currentId = resReq.id
         establishedRequests[currentId] = resReq
@@ -106,6 +109,7 @@ class SwitchHandler(threading.Thread): # Communicate with switches
             data_str = data.decode()
             print("received data:", data_str)
             ips[data_str] = addr[0]
+
             # TODO: receive and handle ARP table of end hosts
             print(ips)
             conn.send(data)  # echo
