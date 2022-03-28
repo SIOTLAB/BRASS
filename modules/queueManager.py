@@ -4,6 +4,7 @@ from distutils.log import error
 from importsAndGlobal import queue, establishedRequests, threading, datetime, TCP_IP, TCP_PORT, BUFFER_SIZE, msgPrefix, svrPrefix, ReservationRequest, id, ips
 import json
 import socket
+import trace
 from pprint import pprint
 
 #
@@ -114,7 +115,10 @@ class SwitchHandler(threading.Thread): # Communicate with switches
 ## END DEVICE HANDLER
 #
 class HostManager(threading.Thread):    # Communicate with hosts
- 
+    def __init__(self, *args, **keywords):
+        threading.Thread.__init__(self, *args, **keywords)
+        self.killed = False
+
     def run(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -134,3 +138,12 @@ class HostManager(threading.Thread):    # Communicate with hosts
                 data = json.loads(data.decode('UTF-8')) # Host info stored in dict
                 data = ReservationRequest(*data, IP, PORT)
                 queue.put(data)  # Push reservation request to queue
+    
+    def localtrace(self, frame, event, arg):
+        if self.killed:
+            if event == 'line':
+                raise SystemExit()
+        return self.localtrace
+    
+    def kill(self):
+        self.killed = True
