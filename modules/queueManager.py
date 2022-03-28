@@ -7,29 +7,6 @@ import socket
 from pprint import pprint
 
 #
-## SWITCH HANDLER
-#
-class Discoverer(threading.Thread): # Communicate with switches
-    def run(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind((TCP_IP, TCP_PORT))
-        s.listen(1)
-
-        while 1:
-            conn, addr = s.accept()
-            print('Connection address:', addr)
-            data = conn.recv(BUFFER_SIZE)
-            if not data:
-                break
-            data_str = data.decode()
-            print("received data:", data_str)
-            ips[data_str] = addr[0]
-            # TODO: receive and handle ARP table of end hosts
-            print(ips)
-            conn.send(data)  # echo
-        conn.close()
-
-#
 ## MAIN THREAD
 #   - CORE LOGIC
 #
@@ -111,9 +88,31 @@ def consumer(queue, lock):   # Handle queued requests
         queue.task_done()
 
 #
+## SWITCHING DEVICE HANDLER
+#
+class SwitchHandler(threading.Thread): # Communicate with switches
+    def run(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind((TCP_IP, TCP_PORT))
+        s.listen(1)
+
+        while 1:
+            conn, addr = s.accept()
+            print('Connection address:', addr)
+            data = conn.recv(BUFFER_SIZE)
+            if not data:
+                break
+            data_str = data.decode()
+            print("received data:", data_str)
+            ips[data_str] = addr[0]
+            # TODO: receive and handle ARP table of end hosts
+            print(ips)
+            conn.send(data)  # echo
+        conn.close()
+
+#
 ## END DEVICE HANDLER
 #
-
 class HostManager(threading.Thread):    # Communicate with hosts
  
     def run(self):

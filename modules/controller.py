@@ -37,7 +37,7 @@ def cleanReservations():
 createMockReqs()
 
 # create threads
-#discoverer = queueManager.Discoverer()
+#discoverer = queueManager.SwitchHandler()
 
 lock = threading.Lock()
 consumer = threading.Thread(target=queueManager.consumer, args=(queue, lock))
