@@ -51,8 +51,7 @@ reservationHandler.start()
 # WAIT FOR THREADS TO COMPLETE
 queue.join()
 switchHandler.join()
-
-hostManager.kill()
+# hostManager.kill()
 hostManager.join()
 
 cleanReservations() # this needs to be run consistently in 

@@ -4,6 +4,8 @@ from distutils.log import error
 from tkinter import Toplevel
 from importsAndGlobal import queue, establishedRequests, threading, datetime, TCP_IP, TCP_PORT, BUFFER_SIZE, msgPrefix, svrPrefix, ReservationRequest, id, ips, topology
 import json
+import jsonrpclib
+import ssl
 import socket
 import trace
 import networkx as nx
@@ -113,33 +115,36 @@ class SwitchHandler(threading.Thread): # Communicate with switches
             if not data:
                 break
             data_str = data.decode()
-            #   TODO: The data_str should contain be a tuple of (switch_name, eapi_username, eapi_password)
+            #   TODO: The data_str should contain be a tuple of (switch_name, eapi_password)
             print("received data:", data_str)
             ips[data_str] = addr[0]
 
             #   Add the switch to the topology
-            # topology.add_node(data_str[0])
+            topology.add_node(data_str[0])
 
-            # url = 'https://{}:{}@{}/command-api'.format(data_str[1], data_str[2], addr[0])
+            url = 'https://{}:{}@{}/command-api'.format(data_str[1], data_str[2], addr[0])
 
             #   SSL certificate check keeps failing; only use HTTPS verification if possible
-            # try:
-            #     _create_unverified_https_context = ssl._create_unverified_context
-            # except AttributeError:  #   Legacy Python that doesn't verify HTTPS certificates by default
-            #     pass
-            # else:                   #   Handle target environment that doesn't support HTTPS verification
-            #     ssl._create_default_https_context = _create_unverified_https_context
+            try:
+                _create_unverified_https_context = ssl._create_unverified_context
+            except AttributeError:  #   Legacy Python that doesn't verify HTTPS certificates by default
+                pass
+            else:                   #   Handle target environment that doesn't support HTTPS verification
+                ssl._create_default_https_context = _create_unverified_https_context
 
-            # eapi_conn = jsonrpclib.Server(url)
+            eapi_conn = jsonrpclib.Server(url)
 
-            # payload = ["show lldp neighbors"]
-            # response = eapi_conn.runCmds(1, payload)[0]
+            payload = ["show lldp neighbors"]
+            response = eapi_conn.runCmds(1, payload)[0]
+            neighbors = response['lldpNeighbors']
 
-            # neighbors = response['lldpNeighbors']
+            for n in neighbors:
+                payload[0] = "show interfaces " + n['port'] + " status"
+                response = eapi_conn.runCmds(1, payload)[0]
+                neighbor_name = n["neighborDevice"]
 
-            # topology.add_edge(name, neighbor_name)
-            # bandwidth = response['interfaceStatuses'][n['port']]['bandwidth']
-            # topology[name][neighbor_name]['bandwidth'] = bandwidth
+                topology.add_edge(data_str[0], neighbor_name)
+                topology[data_str[0]][neighbor_name]['total_bandwidth'] = response['interfaceStatuses'][n['port']]['bandwidth']
 
             #   TODO: receive and handle ARP table of end hosts
             print(ips)
