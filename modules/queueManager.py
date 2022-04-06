@@ -139,12 +139,13 @@ class SwitchHandler(threading.Thread): # Communicate with switches
             data_str = data.decode()
             #   TODO: The data_str should contain be a tuple of (switch_name, eapi_password)
             print("received data:", data_str)
-            ips[data_str] = addr[0]
+            ips[data_str[0]] = addr[0]
+            passwords[data_str[0]] = data_str[1]
 
             #   Add the switch to the topology
             topology.add_node(data_str[0])
 
-            url = 'https://{}:{}@{}/command-api'.format(data_str[1], data_str[2], addr[0])
+            url = 'https://{}:{}@{}/command-api'.format(data_str[0], data_str[1], addr[0])  # username, password, ip
 
             #   SSL certificate check keeps failing; only use HTTPS verification if possible
             try:
