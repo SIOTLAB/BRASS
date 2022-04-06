@@ -13,16 +13,16 @@ svrPrefix = 'pfg_ip_response_serv'
 queue = Queue() # global array of requests as they come in from end devices
 id = 0 # naive solution that simply increments id; we can change this so that IDs are reused
 establishedRequests = {}
-ips = []
+ips = {}
+passwords = {}
 topology = nx.Graph()
 
 class ReservationRequest:
-  def __init__(self, senderIp, destIp, bandwidth, duration, ip, port):
+  def __init__(self, senderIp, destIp, bandwidth, duration, port):
     self.senderIp = senderIp
     self.destIp = destIp
     self.bandwidth = bandwidth
     self.duration = duration # duration is measured from when the request is established on the controller, scale is in seconds
-    self.ip = ip
-    self.port = port
+    self.senderPort = port
     self.expirationTime = None
     self.id = None # id is added when reservation is established

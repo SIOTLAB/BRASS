@@ -2,7 +2,7 @@
 
 from distutils.log import error
 from tkinter import Toplevel
-from importsAndGlobal import queue, establishedRequests, threading, datetime, TCP_IP, TCP_PORT, BUFFER_SIZE, msgPrefix, svrPrefix, ReservationRequest, id, ips, topology
+from importsAndGlobal import queue, establishedRequests, threading, datetime, TCP_IP, TCP_PORT, BUFFER_SIZE, msgPrefix, svrPrefix, ReservationRequest, id, ips, topology, passwords
 import json
 import jsonrpclib
 import ssl
@@ -64,28 +64,50 @@ def prepareRequest(resReq):
     resReq.expirationTime = expirationTime
 
     pprint(vars(resReq))
-
     return resReq
 
-def establishReservation(resReq): # returns whether or not the request was established via a message
-    message = "CLOSE"   # reservation could be instantiated
-
-    # TODO
+def getPath(resReq):
+    # TODO:
     # if(there is enough bandwidth for the request):
     #       Check NetworkX
     # labels = nx.get_edge_attributes(G, "bandwidth")
     # pls = nx.spring_layout(G)
-    # nx.draw_networkx(G, pls)
-    # nx.draw_networkx_edge_labels(G, pls, labels)
+    return None
 
-    if(True):
-        currentId = resReq.id
-        establishedRequests[currentId] = resReq
-        message = "YES"
-    else:
-        # reservation could not be instantiated
+def establishReservation(resReq): # returns whether or not the request was established via a message
+    message = "LOG: "
+
+    path = getPath(resReq)
+    if not(path):
         message = "NO"
-    # if message starts with CLOSE: quit the host manager thread(s)
+        return message
+
+    for switch in path:
+        url = 'https://{}:{}@{}/command-api'.format(switch, passwords[switch], ips[switch])
+
+        #   SSL certificate check keeps failing; only use HTTPS verification if possible
+        try:
+            _create_unverified_https_context = ssl._create_unverified_context
+        except AttributeError:  #   Legacy Python that doesn't verify HTTPS certificates by default
+            pass
+        else:                   #   Handle target environment that doesn't support HTTPS verification
+            ssl._create_default_https_context = _create_unverified_https_context
+
+        eapi_conn = jsonrpclib.Server(url)
+
+        # Creating a class map   
+        # Creating an ACL for that specific source/dest
+        # Some other way of distinguising with like a header value?
+        # Apply ACL to class map
+        # Apply class map to policy map
+        payload = [""]
+        response = eapi_conn.runCmds(1, payload)[0]
+        neighbors = response['lldpNeighbors']
+
+    currentId = resReq.id
+    establishedRequests[currentId] = resReq
+    message = "YES"
+
     return message
 
 def consumer(queue, lock):   # Handle queued requests
@@ -94,7 +116,7 @@ def consumer(queue, lock):   # Handle queued requests
     while True:
         item = queue.get()
         with lock:
-            resReq = prepareRequest(item)
+            resReq = prepareRequest(item)           # Format the request
             message = establishReservation(resReq)
             errorChecking(resReq, message)
         queue.task_done()
