@@ -33,8 +33,8 @@ def errorChecking(resReq, message):
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    IP = resReq.ip
-    PORT = resReq.port
+    IP = resReq.senderIp
+    PORT = resReq.senderPort
     server_address = (IP, PORT)
     s.bind(server_address)
 
