@@ -25,9 +25,6 @@ rsrv_error = [
     "Reservation Failed"
 ]
 
-def getMessage(resReq):
-    return "YES wow it works so cool"
-
 def errorChecking(resReq, message):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

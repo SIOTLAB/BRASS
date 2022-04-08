@@ -25,9 +25,6 @@ def createMockReqs():
 def discoverTopology(): # rerun this as needed
     return
 
-def establishTcp(): # run on demand from end devices
-    return 0
-
 def cleanReservations():
     for entry in establishedRequests.values():
         currentTime = datetime.datetime.utcnow()
@@ -49,9 +46,9 @@ hostManager.start()
 reservationHandler.start()
 
 # WAIT FOR THREADS TO COMPLETE
-queue.join()
 switchHandler.join()
-# hostManager.kill()
 hostManager.join()
+reservationHandler.join()
+# hostManager.kill()
 
-cleanReservations() # this needs to be run consistently in 
+cleanReservations() # this needs to be run consistently
