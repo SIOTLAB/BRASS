@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from distutils.log import error
+import re
 from tkinter import Toplevel
 from importsAndGlobal import queue, establishedRequests, threading, datetime, TCP_IP, TCP_PORT, BUFFER_SIZE, msgPrefix, svrPrefix, ReservationRequest, id, ips, topology, usernames, passwords
 import json
@@ -139,7 +140,13 @@ class SwitchHandler(threading.Thread): # Communicate with switches
                 break
             data_str = data.decode()    # received (switch_name, user_name, eapi_password)
 
-            if data_str[1] != 'ARP':
+            if data_str[1] == 'ARP':
+                print("Received ARP update message from", data_str[0])
+                if self.fetchArpTable(data_str[0]):
+                    response = "Sucessful ARP update."
+                else:
+                    response = "Failed ARP update."
+            else:
                 print("Received switch information from", data_str[0])
                 ips[data_str[0]] = addr[0]
                 usernames[data_str[0]] = data_str[1]
@@ -171,10 +178,29 @@ class SwitchHandler(threading.Thread): # Communicate with switches
                     topology.add_edge(data_str[0], neighbor_name)
                     topology[data_str[0]][neighbor_name]['total_bandwidth'] = response['interfaceStatuses'][n['port']]['bandwidth']
 
-                #   TODO: receive and handle ARP table of end hosts
                 print(ips)
-                conn.send(data)  # echo
+                response = "Switch discovered by controller."
+
+            conn.send(response)  # echo
         conn.close()
+
+    def fetchArpTable(self, switch_name):
+        url = 'https://{}:{}@{}/command-api'.format(usernames[switch_name], passwords[switch_name], ips[switch_name])  # format(username, password, ip)
+        #   SSL certificate check keeps failing; only use HTTPS verification if possible
+        try:
+            _create_unverified_https_context = ssl._create_unverified_context
+        except AttributeError:  #   Legacy Python that doesn't verify HTTPS certificates by default
+            pass
+        else:                   #   Handle target environment that doesn't support HTTPS verification
+            ssl._create_default_https_context = _create_unverified_https_context
+
+        eapi_conn = jsonrpclib.Server(url)
+
+        payload = ["show arp"]
+        response = eapi_conn.runCmds(1, payload)[0]
+        neighbors = response['ipV4Neighbors']
+
+        return True
 
 #
 ## END DEVICE HANDLER
