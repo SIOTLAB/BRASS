@@ -3,7 +3,9 @@
 import argparse
 import json
 import socket
+import os
 
+USER = os.getenv('USER')
 TCP_PORT = 5005
 BUFFER_SIZE = 1024
 
@@ -29,7 +31,7 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((tcp_ip, TCP_PORT))
 
 #   SEND SWITCH DISCOVERY INFORMATION
-message = [switch_name, args['password']]
+message = [switch_name, USER, args['password']]
 s.send(str.encode(message))
 data = s.recv(BUFFER_SIZE)
 

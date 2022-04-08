@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
 from distutils.log import error
+import re
 from tkinter import Toplevel
-from importsAndGlobal import queue, establishedRequests, threading, datetime, TCP_IP, TCP_PORT, BUFFER_SIZE, msgPrefix, svrPrefix, ReservationRequest, id, ips, topology, passwords
+from importsAndGlobal import queue, establishedRequests, threading, datetime, TCP_IP, TCP_PORT, BUFFER_SIZE, msgPrefix, svrPrefix, ReservationRequest, id, ips, topology, usernames, passwords
 import json
 import jsonrpclib
 import ssl
@@ -130,46 +131,77 @@ class SwitchHandler(threading.Thread): # Communicate with switches
         while 1:
             conn, addr = s.accept()
             print('Connection address:', addr)
-            data = conn.recv(BUFFER_SIZE)
+
+            try:
+                data = conn.recv(BUFFER_SIZE)
+            except:
+                break
+
             if not data:
                 break
-            data_str = data.decode()
-            #   TODO: The data_str should contain be a tuple of (switch_name, eapi_password)
-            print("received data:", data_str)
-            ips[data_str[0]] = addr[0]
-            passwords[data_str[0]] = data_str[1]
+            data_str = data.decode()    # received (switch_name, user_name, eapi_password)
 
-            #   Add the switch to the topology
-            topology.add_node(data_str[0])
+            if data_str[1] == 'ARP':
+                print("Received ARP update message from", data_str[0])
+                if self.fetchArpTable(data_str[0]):
+                    response = "Sucessful ARP update."
+                else:
+                    response = "Failed ARP update."
+            else:
+                print("Received switch information from", data_str[0])
+                ips[data_str[0]] = addr[0]
+                usernames[data_str[0]] = data_str[1]
+                passwords[data_str[0]] = data_str[2]
+                url = 'https://{}:{}@{}/command-api'.format(data_str[1], data_str[2], addr[0])  # format(username, password, ip)
 
-            url = 'https://{}:{}@{}/command-api'.format(data_str[0], data_str[1], addr[0])  # username, password, ip
+                #   Add the switch to the topology
+                topology.add_node(data_str[0])
 
-            #   SSL certificate check keeps failing; only use HTTPS verification if possible
-            try:
-                _create_unverified_https_context = ssl._create_unverified_context
-            except AttributeError:  #   Legacy Python that doesn't verify HTTPS certificates by default
-                pass
-            else:                   #   Handle target environment that doesn't support HTTPS verification
-                ssl._create_default_https_context = _create_unverified_https_context
+                #   SSL certificate check keeps failing; only use HTTPS verification if possible
+                try:
+                    _create_unverified_https_context = ssl._create_unverified_context
+                except AttributeError:  #   Legacy Python that doesn't verify HTTPS certificates by default
+                    pass
+                else:                   #   Handle target environment that doesn't support HTTPS verification
+                    ssl._create_default_https_context = _create_unverified_https_context
 
-            eapi_conn = jsonrpclib.Server(url)
+                eapi_conn = jsonrpclib.Server(url)
 
-            payload = ["show lldp neighbors"]
-            response = eapi_conn.runCmds(1, payload)[0]
-            neighbors = response['lldpNeighbors']
-
-            for n in neighbors:
-                payload[0] = "show interfaces " + n['port'] + " status"
+                payload = ["show lldp neighbors"]
                 response = eapi_conn.runCmds(1, payload)[0]
-                neighbor_name = n["neighborDevice"]
+                neighbors = response['lldpNeighbors']
 
-                topology.add_edge(data_str[0], neighbor_name)
-                topology[data_str[0]][neighbor_name]['total_bandwidth'] = response['interfaceStatuses'][n['port']]['bandwidth']
+                for n in neighbors:
+                    payload[0] = "show interfaces " + n['port'] + " status"
+                    response = eapi_conn.runCmds(1, payload)[0]
+                    neighbor_name = n["neighborDevice"]
 
-            #   TODO: receive and handle ARP table of end hosts
-            print(ips)
-            conn.send(data)  # echo
+                    topology.add_edge(data_str[0], neighbor_name)
+                    topology[data_str[0]][neighbor_name]['total_bandwidth'] = response['interfaceStatuses'][n['port']]['bandwidth']
+
+                print(ips)
+                response = "Switch discovered by controller."
+
+            conn.send(response)  # echo
         conn.close()
+
+    def fetchArpTable(self, switch_name):
+        url = 'https://{}:{}@{}/command-api'.format(usernames[switch_name], passwords[switch_name], ips[switch_name])  # format(username, password, ip)
+        #   SSL certificate check keeps failing; only use HTTPS verification if possible
+        try:
+            _create_unverified_https_context = ssl._create_unverified_context
+        except AttributeError:  #   Legacy Python that doesn't verify HTTPS certificates by default
+            pass
+        else:                   #   Handle target environment that doesn't support HTTPS verification
+            ssl._create_default_https_context = _create_unverified_https_context
+
+        eapi_conn = jsonrpclib.Server(url)
+
+        payload = ["show arp"]
+        response = eapi_conn.runCmds(1, payload)[0]
+        neighbors = response['ipV4Neighbors']
+
+        return True
 
 #
 ## END DEVICE HANDLER
