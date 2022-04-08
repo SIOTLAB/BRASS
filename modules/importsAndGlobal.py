@@ -14,6 +14,7 @@ queue = Queue() # global array of requests as they come in from end devices
 id = 0 # naive solution that simply increments id; we can change this so that IDs are reused
 establishedRequests = {}
 ips = {}
+usernames = {}
 passwords = {}
 topology = nx.Graph()
 
