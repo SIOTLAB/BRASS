@@ -135,7 +135,11 @@ class SwitchHandler(threading.Thread): # Communicate with switches
             conn, addr = s.accept()
             print('Connection address:', addr)
 
-            data = conn.recv(BUFFER_SIZE)
+            try:
+                data = conn.recv(BUFFER_SIZE)
+            except:
+                break
+
             if not data:
                 break
             data_str = data.decode()    # received (switch_name, user_name, eapi_password)
