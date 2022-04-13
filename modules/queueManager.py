@@ -78,14 +78,23 @@ def prepareRequest(resReq):
     pprint(vars(resReq))
     return resReq
 
+def checkPathBandwidth(path, bandwidth):
+    # path is a list
+    return True
 
-def getPath(resReq):
-    # TODO:
-    # if(there is enough bandwidth for the request):
-    #       Check NetworkX
-    # labels = nx.get_edge_attributes(G, "bandwidth")
-    # pls = nx.spring_layout(G)
-    return None
+
+def getPath(resReq): # returns a list of IP addresses of swtiches along route
+    paths = nx.shortest_simple_paths(topology, resReq.senderIp, resReq.destIp)
+
+    bestPath = None
+    for path in paths:
+        hasBandwidth = checkPathBandwidth(path, resReq.bandwidth)
+        if(hasBandwidth):
+            # has enough bandwidth
+            bestPath = path
+            break
+
+    return bestPath
 
 
 def establishReservation(
