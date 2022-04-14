@@ -11,9 +11,8 @@ msgPrefix = "pfg_ip_broadcast_cl"
 svrPrefix = "pfg_ip_response_serv"
 
 queue = Queue()  # global array of requests as they come in from end devices
-id = (
-    0
-)  # naive solution that simply increments id; we can change this so that IDs are reused
+id = 0
+# naive solution that simply increments id; we can change this so that IDs are reused
 establishedRequests = {}
 ips = {}
 usernames = {}
