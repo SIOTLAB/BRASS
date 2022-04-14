@@ -3,8 +3,8 @@ import datetime
 from queue import Queue
 import networkx as nx
 
-TCP_IP = "10.16.252.10"
-TCP_PORT = 5005
+TCP_IP = None
+TCP_PORT = None
 BUFFER_SIZE = 20  # Normally 1024, but we want fast response
 
 msgPrefix = "pfg_ip_broadcast_cl"

@@ -8,15 +8,32 @@
 # - this processing involves establishing the request, then sending out a confirmation to the end device involved
 # - "show my reservations" command to see reservation requests per end device
 
+import argparse
+import json
 from importsAndGlobal import (
     queue,
     establishedRequests,
     datetime,
     threading,
     ReservationRequest,
+    TCP_IP,
+    TCP_PORT,
 )
 from random import randint
 import queueManager
+
+
+parser = argparse.ArgumentParser(
+    description="A resource reservation controller. (SD-TCA)"
+)
+parser.add_argument(
+    "address", metavar="A.B.C.D", type=str, help="Controller IP address."
+)
+parser.add_argument("port", metavar="Port", type=str, help="Controller port number.")
+args = parser.parse_args()
+args = json.dumps(vars(args))  #    JSON FORMATTED ARGUMENTS
+TCP_IP = args["address"]
+TCP_PORT = args["port"]
 
 # def createMockReqs():
 #     # Temporary for testing
