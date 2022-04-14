@@ -2,7 +2,8 @@
 
 from distutils.log import error
 import re
-from tkinter import Toplevel
+
+# from tkinter import Toplevel
 from importsAndGlobal import (
     queue,
     establishedRequests,
