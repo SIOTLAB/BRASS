@@ -3,17 +3,16 @@ import datetime
 from queue import Queue
 import networkx as nx
 
-TCP_IP = "10.16.252.10"
-TCP_PORT = 5005
+TCP_IP = None
+TCP_PORT = None
 BUFFER_SIZE = 20  # Normally 1024, but we want fast response
 
 msgPrefix = "pfg_ip_broadcast_cl"
 svrPrefix = "pfg_ip_response_serv"
 
 queue = Queue()  # global array of requests as they come in from end devices
-id = (
-    0
-)  # naive solution that simply increments id; we can change this so that IDs are reused
+id = 0
+# naive solution that simply increments id; we can change this so that IDs are reused
 establishedRequests = {}
 ips = {}
 usernames = {}

@@ -2,7 +2,8 @@
 
 from distutils.log import error
 import re
-from tkinter import Toplevel
+
+# from tkinter import Toplevel
 from importsAndGlobal import (
     queue,
     establishedRequests,
@@ -177,6 +178,7 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                 break
             data_str = data.decode()  # received (switch_name, user_name, eapi_password)
 
+            # Could receive two types of messages 1) and ARP table update message, or 2) a new switch discovery message.
             if data_str[1] == "ARP":
                 print("Received ARP update message from", data_str[0])
                 if self.fetchArpTable(data_str[0]):
@@ -190,10 +192,10 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                 passwords[data_str[0]] = data_str[2]
                 url = "https://{}:{}@{}/command-api".format(
                     data_str[1], data_str[2], addr[0]
-                )  # format(username, password, ip)
+                )  # url format(username, password, ip)
 
                 #   Add the switch to the topology
-                topology.add_node(data_str[0])
+                topology.add_node(data_str[0])  # add the switch to the graph by name
 
                 #   SSL certificate check keeps failing; only use HTTPS verification if possible
                 try:
@@ -232,22 +234,25 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
         #   SSL certificate check keeps failing; only use HTTPS verification if possible
         try:
             _create_unverified_https_context = ssl._create_unverified_context
-        except AttributeError:  #   Legacy Python that doesn't verify HTTPS certificates by default
+        except AttributeError:  # Legacy Python that doesn't verify HTTPS certificates by default
             pass
-        else:  #   Handle target environment that doesn't support HTTPS verification
+        else:  # Handle target environment that doesn't support HTTPS verification
             ssl._create_default_https_context = _create_unverified_https_context
 
         eapi_conn = jsonrpclib.Server(url)
 
         payload = ["show arp"]
-        response = eapi_conn.runCmds(1, payload)[0]
-        arpTable = response["ipV4Neighbors"]
+        try:
+            response = eapi_conn.runCmds(1, payload)[0]
+            arpTable = response["ipV4Neighbors"]
 
-        for entry in arpTable:
-            if not entry["address"] in ips.values():
-                topology.add_node(entry["address"])
-
-        return True
+            for entry in arpTable:
+                if not entry["address"] in ips.values():
+                    topology.add_node(entry["address"])
+                    topology.add_edge(entry["address"], switch_name)
+            return True
+        except:
+            return False
 
 
 #
