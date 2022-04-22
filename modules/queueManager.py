@@ -84,7 +84,7 @@ def checkPathBandwidth(path, bandwidth):
     return True
 
 
-def getPath(resReq): # returns a list of IP addresses of swtiches along route
+def getPath(resReq): # returns a list of IP addresses of switches along route
     paths = nx.shortest_simple_paths(topology, resReq.senderIp, resReq.destIp)
 
     bestPath = None
