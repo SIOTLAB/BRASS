@@ -79,18 +79,26 @@ def prepareRequest(resReq):
     pprint(vars(resReq))
     return resReq
 
+
 def checkPathBandwidth(path, bandwidth):
     # path is a list
-    return True
+    # bandwidth is an attribut of edges
+    edges = list(zip(path, path[1:]))
+    minBandwidth = min(edges, key=lambda e: topology[e[0]][e[1]]["bandwidth"])
+    return bandwidth >= minBandwidth
 
 
-def getPath(resReq): # returns a list of IP addresses of swtiches along route
-    paths = nx.shortest_simple_paths(topology, resReq.senderIp, resReq.destIp)
+def getPath(resReq):  # returns a list of IP addresses of swtiches along route
+    paths = list(
+        nx.shortest_simple_paths(
+            topology, resReq.senderIp, resReq.destIp, weight="bandwidth"
+        )
+    )
 
     bestPath = None
     for path in paths:
         hasBandwidth = checkPathBandwidth(path, resReq.bandwidth)
-        if(hasBandwidth):
+        if hasBandwidth:
             # has enough bandwidth
             bestPath = path
             break
