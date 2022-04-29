@@ -10,15 +10,7 @@
 
 import argparse
 import json
-from importsAndGlobal import (
-    queue,
-    establishedRequests,
-    datetime,
-    threading,
-    ReservationRequest,
-    TCP_IP,
-    TCP_PORT,
-)
+from importsAndGlobal import queue, establishedRequests, datetime, threading
 from random import randint
 import queueManager
 

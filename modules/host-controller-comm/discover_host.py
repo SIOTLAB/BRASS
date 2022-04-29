@@ -13,46 +13,51 @@ def duration_type(x):
         raise argparse.ArgumentTypeError("Maximum duration is 1 hour")
     return x
 
+
 def protocol_type(x):
     x = x.lower()
-    if x not in ['udp', 'tcp']:
+    if x not in ["udp", "tcp"]:
         raise argparse.ArgumentTypeError("Unsupported protocol")
     return x
 
 
 # PARSE ARGUMENTS
 parser = argparse.ArgumentParser(
-    description="Request an amount of reservation from a network controller.")
-parser.add_argument("src",
-                    metavar="A.B.C.D",
-                    type=str,
-                    help="source IP for reserved communication")
-parser.add_argument("src_port",
-                    metavar="sPort",
-                    type=str,
-                    help="source port for reserved communication")
-parser.add_argument("dest",
-                    metavar="A.B.C.D",
-                    type=str,
-                    help="destination IP for reserved communication")
-parser.add_argument("dest_port",
-                    metavar="dPort",
-                    type=str,
-                    help="destination port for reserved communication")
-parser.add_argument("resv",
-                    metavar="KB",
-                    type=int,
-                    help="amount of bandwidth reservation in KiloBytes")
-parser.add_argument("dura",
-                    metavar="sec",
-                    type=duration_type,
-                    help="duration of reservation in seconds")
-parser.add_argument("protocol",
-                    type=protocol_type,
-                    help="duration of reservation in seconds")
+    description="Request an amount of reservation from a network controller."
+)
+parser.add_argument(
+    "src", metavar="A.B.C.D", type=str, help="source IP for reserved communication"
+)
+parser.add_argument(
+    "src_port", metavar="sPort", type=str, help="source port for reserved communication"
+)
+parser.add_argument(
+    "dest",
+    metavar="A.B.C.D",
+    type=str,
+    help="destination IP for reserved communication",
+)
+parser.add_argument(
+    "dest_port",
+    metavar="dPort",
+    type=str,
+    help="destination port for reserved communication",
+)
+parser.add_argument(
+    "resv", metavar="KB", type=int, help="amount of bandwidth reservation in KiloBytes"
+)
+parser.add_argument(
+    "dura", metavar="sec", type=duration_type, help="duration of reservation in seconds"
+)
+parser.add_argument("protocol", type=protocol_type, help="protocol of the traffic flow")
 
-args = parser.parse_args()
-message = json.dumps(vars(args))  # JSON FORMATTED ARGUMENTS
+args = vars(parser.parse_args())
+message = json.dumps(args)  # JSON FORMATTED ARGUMENTS
+
+msgPrefix = "pfg_ip_broadcast_cl"
+print(msgPrefix + message)
+# print({"test": 5, **args})
+exit()
 
 # CREATE UDP SOCKET
 sock = socket(AF_INET, SOCK_DGRAM)
@@ -78,7 +83,7 @@ try:
             print("waiting for response")
             data, server = sock.recvfrom(4096)
             if data.decode("UTF-8").startswith(svrPrefix):
-                print("received: " + data[len(svrPrefix):])
+                print("received: " + data[len(svrPrefix) :])
                 print("server ip: " + str(server[0]))
                 break
             else:

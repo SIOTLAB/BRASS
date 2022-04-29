@@ -1,16 +1,17 @@
 #!/usr/bin/python
 
+from cgitb import enable
 from distutils.log import error
 import re
 
 # from tkinter import Toplevel
 from importsAndGlobal import (
+    CONTROLLER_IP,
+    CONTROLLER_PORT,
     queue,
     establishedRequests,
     threading,
     datetime,
-    TCP_IP,
-    TCP_PORT,
     BUFFER_SIZE,
     msgPrefix,
     svrPrefix,
@@ -20,6 +21,7 @@ from importsAndGlobal import (
     topology,
     usernames,
     passwords,
+    resMesg,
 )
 import json
 import jsonrpclib
@@ -109,6 +111,7 @@ def getPath(resReq):  # returns a list of IP addresses of swtiches along route
 def establishReservation(
     resReq
 ):  # returns whether or not the request was established via a message
+    global resMesg
     message = "LOG: "
 
     path = getPath(resReq)
@@ -130,6 +133,14 @@ def establishReservation(
             ssl._create_default_https_context = _create_unverified_https_context
 
         eapi_conn = jsonrpclib.Server(url)
+
+        resMesg["params"]["cmds"] = [
+            "enable",
+            "configure",
+            "ip access-list <name> permit udp <source ip> eq <source port> <dest ip> eq <dest port>",
+        ]
+        # "ip access-list <name> permit tcp <source ip> eq <source port> <dest ip> eq <dest port>"
+        # "ip access-list <name> permit ip <source ip> <dest ip>"
 
         # Creating a class map
         # Creating an ACL for that specific source/dest
@@ -271,6 +282,24 @@ class HostManager(threading.Thread):  # Communicate with hosts
         threading.Thread.__init__(self, *args, **keywords)
         self.killed = False
 
+    def parseMsg(self, data, ip, port):
+        print(data)
+        data = json.loads(data)  # Host info stored in dict
+        # data = json.loads(data.decode("UTF-8"))  # Host info stored in dict
+        data = ReservationRequest(data, ip, port)
+        print(data)
+        # ReservationRequest(senderIp, destIp, bandwidth, duration, port)
+        #         self.senderIp = senderIp
+        #         self.destIp = destIp
+        #         self.bandwidth = bandwidth
+        #         self.duration = (
+        #             duration
+        #         )  # duration is measured from when the request is established on the controller, scale is in seconds
+        #         self.senderPort = port
+        #         self.expirationTime = None
+        #         self.id = None  # id is added when reservation is established
+        return data
+
     def run(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -286,9 +315,7 @@ class HostManager(threading.Thread):  # Communicate with hosts
             data = str(data.decode())
 
             if data.startswith(msgPrefix):
-                data = data[len(msgPrefix) :]
-                data = json.loads(data.decode("UTF-8"))  # Host info stored in dict
-                data = ReservationRequest(*data, IP, PORT)
+                data = self.parseMsg(data[len(msgPrefix) :], IP, PORT)
                 queue.put(data)  # Push reservation request to queue
 
     def localtrace(self, frame, event, arg):
@@ -299,3 +326,8 @@ class HostManager(threading.Thread):  # Communicate with hosts
 
     def kill(self):
         self.killed = True
+
+
+hm = HostManager()
+data = "{'src': '10.16.224.24', 'src_port': '5000', 'dest': '10.16.224.22', 'resv': 10, 'dura': 5.0, 'protocol': 'tcp', 'dest_port': '5000'}"
+hm.parseMsg(data, CONTROLLER_IP, CONTROLLER_PORT)
