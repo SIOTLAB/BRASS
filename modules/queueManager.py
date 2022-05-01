@@ -118,7 +118,7 @@ def establishReservation(
     if not (path):
         message = "NO"
         return message
-
+    pprint(path)
     for switch in path:
         url = "https://{}:{}@{}/command-api".format(
             switch, passwords[switch], ips[switch]
@@ -141,12 +141,35 @@ def establishReservation(
         ]
         # "ip access-list <name> permit tcp <source ip> eq <source port> <dest ip> eq <dest port>"
         # "ip access-list <name> permit ip <source ip> <dest ip>"
-
+        
         # Creating a class map
         # Creating an ACL for that specific source/dest
         # Some other way of distinguising with like a header value?
         # Apply ACL to class map
         # Apply class map to policy map
+
+        # SET OF WORKING COMMANDS TO CREATE ACL test1, CREATE class-map test1, 
+        # CREATE policy-map test1, set policers for pmap, and apply to interface 1/1
+
+        # enable
+        # configure
+        # ip access-list test1
+        # permit tcp 24.224.1.0/24 eq 5001 22.224.1.0/24 eq 5001
+        # exit
+        # class-map match-any test1
+        # match ip access-group test1
+        # exit
+        # policy-map test1
+        # class test1
+        # police rate 30000 mbps burst-size 256 mbytes
+        # exit
+        # class default
+        # police rate 10000 mbps burst-size 256 mbytes
+        # exit
+        # exit
+        # interface ethernet 1/1
+        # service-policy input test1
+        
         payload = [""]
         response = eapi_conn.runCmds(1, payload)[0]
         neighbors = response["lldpNeighbors"]
@@ -239,6 +262,8 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                     topology[data_str[0]][neighbor_name]["total_bandwidth"] = response[
                         "interfaceStatuses"
                     ][n["port"]]["bandwidth"]
+                    topology[data_str[0]][neightbor_name]["ethA"] = n["port"]
+                    topology[data_str[0]][neightbor_name]["ethB"] = n["neighborPort"]
 
                 print(ips)
                 response = "Switch discovered by controller."
