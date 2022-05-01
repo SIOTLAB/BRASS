@@ -311,7 +311,7 @@ class HostManager(threading.Thread):  # Communicate with hosts
         print(data)
         data = json.loads(data)  # Host info stored in dict
         # data = json.loads(data.decode("UTF-8"))  # Host info stored in dict
-        data = ReservationRequest(data, ip, port)
+        data = ReservationRequest(data["src"], data["dest"], data["resv"], data["dura"], data["src_port"])
         print(data)
         # ReservationRequest(senderIp, destIp, bandwidth, duration, port)
         #         self.senderIp = senderIp
@@ -354,5 +354,5 @@ class HostManager(threading.Thread):  # Communicate with hosts
 
 
 hm = HostManager()
-data = "{'src': '10.16.224.24', 'src_port': '5000', 'dest': '10.16.224.22', 'resv': 10, 'dura': 5.0, 'protocol': 'tcp', 'dest_port': '5000'}"
+data = "{\"src\": \"10.16.224.24\", \"src_port\": \"5000\", \"dest\": \"10.16.224.22\", \"resv\": 10, \"dura\": 5.0, \"protocol\": \"tcp\", \"dest_port\": \"5000\"}"
 hm.parseMsg(data, CONTROLLER_IP, CONTROLLER_PORT)

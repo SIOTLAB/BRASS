@@ -24,8 +24,8 @@ parser.add_argument(
 parser.add_argument("port", metavar="Port", type=str, help="Controller port number.")
 args = parser.parse_args()
 args = json.dumps(vars(args))  #    JSON FORMATTED ARGUMENTS
-TCP_IP = args["address"]
-TCP_PORT = args["port"]
+TCP_IP = "10.16.224.150" #args["address"]
+TCP_PORT = "5001"        #args["port"]
 
 # def createMockReqs():
 #     # Temporary for testing
