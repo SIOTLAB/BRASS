@@ -199,7 +199,9 @@ def consumer(queue, lock):  # Handle queued requests
 class SwitchHandler(threading.Thread):  # Communicate with switches
     def run(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind((TCP_IP, TCP_PORT))
+        global TCP_IP
+        global TCP_PORT
+        s.bind(("10.16.224.150", 5005))
         s.listen(1)
         global BUFFER_SIZE
         global ips
@@ -219,7 +221,7 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
             if not data:
                 break
             data_str = data.decode()  # received (switch_name, user_name, eapi_password)
-
+                                      # Where is this supposed to come from ^^? Not being sent correctly.
             # Could receive two types of messages 1) and ARP table update message, or 2) a new switch discovery message.
             if data_str[1] == "ARP":
                 print("Received ARP update message from", data_str[0])
@@ -232,6 +234,8 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                 ips[data_str[0]] = addr[0]
                 usernames[data_str[0]] = data_str[1]
                 passwords[data_str[0]] = data_str[2]
+                print(usernames)
+                print(passwords)
                 url = "https://{}:{}@{}/command-api".format(
                     data_str[1], data_str[2], addr[0]
                 )  # url format(username, password, ip)
@@ -248,8 +252,9 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                     ssl._create_default_https_context = _create_unverified_https_context
 
                 eapi_conn = jsonrpclib.Server(url)
-
+                
                 payload = ["show lldp neighbors"]
+                print(payload)
                 response = eapi_conn.runCmds(1, payload)[0]
                 neighbors = response["lldpNeighbors"]
 
