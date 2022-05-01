@@ -3,6 +3,7 @@
 from cgitb import enable
 from distutils.log import error
 import re
+import time
 
 # from tkinter import Toplevel
 from importsAndGlobal import (
@@ -133,11 +134,26 @@ def establishReservation(
             ssl._create_default_https_context = _create_unverified_https_context
 
         eapi_conn = jsonrpclib.Server(url)
-
+        print(resReq)
         resMesg["params"]["cmds"] = [
             "enable",
             "configure",
-            "ip access-list <name> permit udp <source ip> eq <source port> <dest ip> eq <dest port>",
+            f"ip access-list {resReq[id]}",
+            f"permit tcp {resReq[src]} eq {resReq[src_port]} {resReq[dest]} eq {resReq[dest_port]}",
+            "exit",
+            f"class-map match-any {resReq[id]}",
+            f"match ip access-group {resReq[id]}",
+            "exit",
+            f"policy-map {resReq[id]}",
+            f"class {resReq[id]}",
+            f"police rate {resReq[something]} mbps burst-size 256 mbytes",
+            "exit",
+            "class default",
+            f"police rate {something} mbps burst-size 256 mbytes",
+            "exit",
+            "exit",
+            "interface {have to know which eth interface to apply to (input)}"
+            f"service-policy input {resReq[id]}"
         ]
         # "ip access-list <name> permit tcp <source ip> eq <source port> <dest ip> eq <dest port>"
         # "ip access-list <name> permit ip <source ip> <dest ip>"
@@ -183,7 +199,7 @@ def establishReservation(
 
 def consumer(queue, lock):  # Handle queued requests
     # block on empty queue
-
+    print("consumer starts")
     while True:
         item = queue.get()
         with lock:
@@ -199,8 +215,7 @@ def consumer(queue, lock):  # Handle queued requests
 class SwitchHandler(threading.Thread):  # Communicate with switches
     def run(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        global TCP_IP
-        global TCP_PORT
+        # was getting an error below, changed to hard coded
         s.bind(("10.16.224.150", 5005))
         s.listen(1)
         global BUFFER_SIZE
@@ -222,6 +237,7 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                 break
             data_str = data.decode()  # received (switch_name, user_name, eapi_password)
                                       # Where is this supposed to come from ^^? Not being sent correctly.
+            
             # Could receive two types of messages 1) and ARP table update message, or 2) a new switch discovery message.
             if data_str[1] == "ARP":
                 print("Received ARP update message from", data_str[0])
@@ -230,18 +246,19 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                 else:
                     response = "Failed ARP update."
             else:
-                print("Received switch information from", data_str[0])
-                ips[data_str[0]] = addr[0]
-                usernames[data_str[0]] = data_str[1]
-                passwords[data_str[0]] = data_str[2]
+                print("Received switch information from", data_str)
+                ips[data_str] = addr[0]
+                usernames[data_str] = "admin" #data_str[1]
+                passwords[data_str] = "$iot224-"+data_str[2:4]  #data_str[2]
+                print(ips)
                 print(usernames)
                 print(passwords)
                 url = "https://{}:{}@{}/command-api".format(
-                    data_str[1], data_str[2], addr[0]
+                    usernames[data_str], passwords[data_str], ips[data_str]
                 )  # url format(username, password, ip)
-
+                print(url)
                 #   Add the switch to the topology
-                topology.add_node(data_str[0])  # add the switch to the graph by name
+                topology.add_node(data_str)  # add the switch to the graph by name
 
                 #   SSL certificate check keeps failing; only use HTTPS verification if possible
                 try:
@@ -262,18 +279,21 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                     payload[0] = "show interfaces " + n["port"] + " status"
                     response = eapi_conn.runCmds(1, payload)[0]
                     neighbor_name = n["neighborDevice"]
+                    print(neighbor_name)
 
-                    topology.add_edge(data_str[0], neighbor_name)
-                    topology[data_str[0]][neighbor_name]["total_bandwidth"] = response[
+                    topology.add_edge(data_str, neighbor_name)
+                    topology[data_str][neighbor_name]["total_bandwidth"] = response[
                         "interfaceStatuses"
                     ][n["port"]]["bandwidth"]
-                    topology[data_str[0]][neightbor_name]["ethA"] = n["port"]
-                    topology[data_str[0]][neightbor_name]["ethB"] = n["neighborPort"]
+                    topology[data_str][neighbor_name]["ethA"] = n["port"]
+                    topology[data_str][neighbor_name]["ethB"] = n["neighborPort"]
 
                 print(ips)
+                print(topology["sw24-r224"]["sw23-r224"]["ethA"])
+                print(topology["sw24-r224"]["sw23-r224"]["ethB"])
                 response = "Switch discovered by controller."
 
-            conn.send(response)  # echo
+            conn.send(str.encode(response))  # echo
         conn.close()
 
     def fetchArpTable(self, switch_name):
@@ -317,7 +337,6 @@ class HostManager(threading.Thread):  # Communicate with hosts
         data = json.loads(data)  # Host info stored in dict
         # data = json.loads(data.decode("UTF-8"))  # Host info stored in dict
         data = ReservationRequest(data["src"], data["dest"], data["resv"], data["dura"], data["src_port"])
-        print(data)
         # ReservationRequest(senderIp, destIp, bandwidth, duration, port)
         #         self.senderIp = senderIp
         #         self.destIp = destIp
@@ -331,6 +350,8 @@ class HostManager(threading.Thread):  # Communicate with hosts
         return data
 
     def run(self):
+        global req
+        print(req)
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -339,7 +360,10 @@ class HostManager(threading.Thread):  # Communicate with hosts
         PORT = 9434
         server_address = (IP, PORT)
         s.bind(server_address)
-
+        
+        time.sleep(60)
+        queue.put(req)
+        print("put data in queue")
         while True:
             data, address = s.recvfrom(4096)
             data = str(data.decode())
@@ -359,5 +383,5 @@ class HostManager(threading.Thread):  # Communicate with hosts
 
 
 hm = HostManager()
-data = "{\"src\": \"10.16.224.24\", \"src_port\": \"5000\", \"dest\": \"10.16.224.22\", \"resv\": 10, \"dura\": 5.0, \"protocol\": \"tcp\", \"dest_port\": \"5000\"}"
-hm.parseMsg(data, CONTROLLER_IP, CONTROLLER_PORT)
+data = '{"src": "24.224.1.2", "src_port": "5001", "dest": "22.224.1.2", "resv": 10, "dura": 5.0, "protocol": "tcp", "dest_port": "5001"}'
+req = hm.parseMsg(data, CONTROLLER_IP, CONTROLLER_PORT)
