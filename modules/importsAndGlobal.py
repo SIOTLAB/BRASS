@@ -6,7 +6,7 @@ import json
 
 CONTROLLER_IP = None
 CONTROLLER_PORT = None
-BUFFER_SIZE = 20  # Normally 1024, but we want fast response
+BUFFER_SIZE = 1024  # Normally 1024, but we want fast response
 
 msgPrefix = "pfg_ip_broadcast_cl"
 svrPrefix = "pfg_ip_response_serv"

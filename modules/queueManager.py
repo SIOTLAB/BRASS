@@ -48,7 +48,9 @@ def errorChecking(resReq, message):
 
     IP = resReq.senderIp
     PORT = resReq.senderPort
-    server_address = (IP, PORT)
+    server_address = (IP, int(PORT))
+    print(server_address)
+    # I don't understand what is happening here, why do we want to bind this address on controller side?
     s.bind(server_address)
 
     #   if message starts with YES: the reservation could be instantiated
@@ -73,7 +75,7 @@ def prepareRequest(resReq):
     global id
     currentId = id
     id += 1
-    resReq.id = currentId
+    resReq.id = "resv" + str(currentId)
     expirationTime = datetime.datetime.utcnow() + datetime.timedelta(
         minutes=resReq.duration
     )
@@ -87,17 +89,19 @@ def checkPathBandwidth(path, bandwidth):
     # path is a list
     # bandwidth is an attribut of edges
     edges = list(zip(path, path[1:]))
-    minBandwidth = min(edges, key=lambda e: topology[e[0]][e[1]]["bandwidth"])
-    return bandwidth >= minBandwidth
+    #print(edges)
+    minLink = min(edges, key=lambda e: topology[e[0]][e[1]]["total_bandwidth"])
+    minBandwidth = topology[minLink[0]][minLink[1]]["total_bandwidth"]
+    #print(bandwidth, minBandwidth)
+    return bandwidth <= int(minBandwidth)
 
 
 def getPath(resReq):  # returns a list of IP addresses of swtiches along route
     paths = list(
         nx.shortest_simple_paths(
-            topology, resReq.senderIp, resReq.destIp, weight="bandwidth"
+            topology, resReq.senderIp, resReq.destIp, weight="total_bandwidth"
         )
     )
-
     bestPath = None
     for path in paths:
         hasBandwidth = checkPathBandwidth(path, resReq.bandwidth)
@@ -117,12 +121,18 @@ def establishReservation(
 
     path = getPath(resReq)
     if not (path):
+        #print("No path found")
         message = "NO"
         return message
     pprint(path)
     for switch in path:
+        # Don't send eAPI commands to end hosts -- may be a better way to implement in the future.
+        # Currently, this relies on naming convention of switches as sw<num>-<rack>
+        if switch.find("sw") == -1:
+            continue
+
         url = "https://{}:{}@{}/command-api".format(
-            switch, passwords[switch], ips[switch]
+            usernames[switch], passwords[switch], ips[switch]
         )
 
         #   SSL certificate check keeps failing; only use HTTPS verification if possible
@@ -134,27 +144,30 @@ def establishReservation(
             ssl._create_default_https_context = _create_unverified_https_context
 
         eapi_conn = jsonrpclib.Server(url)
-        print(resReq)
+        # switch 22 has maximum burst size of 128 for some reason, while rest have 256. I have no idea why haha.
+        burst_size = 128 if switch.find('22') == 2 else 256 
         resMesg["params"]["cmds"] = [
             "enable",
             "configure",
-            f"ip access-list {resReq[id]}",
-            f"permit tcp {resReq[src]} eq {resReq[src_port]} {resReq[dest]} eq {resReq[dest_port]}",
+            f"ip access-list {resReq.id}",
+            f"permit tcp {resReq.senderIp}/24 eq {resReq.senderPort} {resReq.destIp}/24 eq {resReq.senderPort}",
             "exit",
-            f"class-map match-any {resReq[id]}",
-            f"match ip access-group {resReq[id]}",
+            f"class-map match-any {resReq.id}",
+            f"match ip access-group {resReq.id}",
             "exit",
-            f"policy-map {resReq[id]}",
-            f"class {resReq[id]}",
-            f"police rate {resReq[something]} mbps burst-size 256 mbytes",
+            f"policy-map {resReq.id}",
+            f"class {resReq.id}",
+            f"police rate {resReq.bandwidth} mbps burst-size {burst_size} mbytes",
             "exit",
             "class default",
-            f"police rate {something} mbps burst-size 256 mbytes",
+            f"police rate 10000 mbps burst-size {burst_size} mbytes",
             "exit",
             "exit",
-            "interface {have to know which eth interface to apply to (input)}"
-            f"service-policy input {resReq[id]}"
+            #"interface ethernet 1/1",
+            #f"service-policy input {resReq.id}",
+            #"exit",
         ]
+        print(resMesg["params"]["cmds"])
         # "ip access-list <name> permit tcp <source ip> eq <source port> <dest ip> eq <dest port>"
         # "ip access-list <name> permit ip <source ip> <dest ip>"
         
@@ -186,9 +199,60 @@ def establishReservation(
         # interface ethernet 1/1
         # service-policy input test1
         
-        payload = [""]
-        response = eapi_conn.runCmds(1, payload)[0]
-        neighbors = response["lldpNeighbors"]
+        #print(url)
+        response = eapi_conn.runCmds(1, resMesg["params"]["cmds"])[0]
+        #print(response)
+        
+    edges = list(zip(path, path[1:]))
+    pprint(edges)
+    
+    for edge in edges:
+        sideA, sideB = edge
+        # if sideA represents a switch, if its an end host, no reservation to apply.
+        if sideA.find("sw") != -1:
+            eth = topology[sideA][sideB]["ports"][sideA] 
+            url = "https://{}:{}@{}/command-api".format(
+                usernames[sideA], passwords[sideA], ips[sideA]
+            )
+            try:
+                _create_unverified_https_context = ssl._create_unverified_context
+            except AttributeError:  #   Legacy Python that doesn't verify HTTPS certificates by default
+                pass
+            else:  #   Handle target environment that doesn't support HTTPS verification
+                ssl._create_default_https_context = _create_unverified_https_context
+            
+            eapi_conn = jsonrpclib.Server(url)
+            cmds = [
+                "enable",
+                "configure", 
+                f"interface {eth}",
+                f"service-policy input {resReq.id}"
+                "exit"
+            ]
+            response = eapi_conn.runCmds(1, cmds)[0]
+
+        # if sideB represents a switch, if its an end host, no reservation to apply.
+        if sideB.find("sw") != -1:
+            eth = topology[sideA][sideB]["ports"][sideB]
+            url = "https://{}:{}@{}/command-api".format(
+                usernames[sideB], passwords[sideB], ips[sideB]
+            )
+            try:
+                _create_unverified_https_context = ssl._create_unverified_context
+            except AttributeError:  #   Legacy Python that doesn't verify HTTPS certificates by default
+                pass
+            else:  #   Handle target environment that doesn't support HTTPS verification
+                ssl._create_default_https_context = _create_unverified_https_context
+            
+            eapi_conn = jsonrpclib.Server(url)
+            cmds = [
+                "enable",
+                "configure", 
+                f"interface {eth}",
+                f"service-policy input {resReq.id}",
+                "exit"
+            ]
+            response = eapi_conn.runCmds(1, cmds)[0]
 
     currentId = resReq.id
     establishedRequests[currentId] = resReq
@@ -205,7 +269,8 @@ def consumer(queue, lock):  # Handle queued requests
         with lock:
             resReq = prepareRequest(item)  # Format the request
             message = establishReservation(resReq)
-            errorChecking(resReq, message)
+            print(message)
+            #errorChecking(resReq, message)
         queue.task_done()
 
 
@@ -223,78 +288,84 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
         global topology
         global usernames
         global passwords
-
+        
+        # Moved outside of while loop -- for TCP, we establish
+        # connection once, and then send multiple messages through it.
         while 1:
             conn, addr = s.accept()
             print("Connection address:", addr)
-
-            try:
-                data = conn.recv(BUFFER_SIZE)
-            except:
-                break
-
-            if not data:
-                break
-            data_str = data.decode()  # received (switch_name, user_name, eapi_password)
-                                      # Where is this supposed to come from ^^? Not being sent correctly.
-            
-            # Could receive two types of messages 1) and ARP table update message, or 2) a new switch discovery message.
-            if data_str[1] == "ARP":
-                print("Received ARP update message from", data_str[0])
-                if self.fetchArpTable(data_str[0]):
-                    response = "Sucessful ARP update."
-                else:
-                    response = "Failed ARP update."
-            else:
-                print("Received switch information from", data_str)
-                ips[data_str] = addr[0]
-                usernames[data_str] = "admin" #data_str[1]
-                passwords[data_str] = "$iot224-"+data_str[2:4]  #data_str[2]
-                print(ips)
-                print(usernames)
-                print(passwords)
-                url = "https://{}:{}@{}/command-api".format(
-                    usernames[data_str], passwords[data_str], ips[data_str]
-                )  # url format(username, password, ip)
-                print(url)
-                #   Add the switch to the topology
-                topology.add_node(data_str)  # add the switch to the graph by name
-
-                #   SSL certificate check keeps failing; only use HTTPS verification if possible
+           
+            while 1:
                 try:
-                    _create_unverified_https_context = ssl._create_unverified_context
-                except AttributeError:  #   Legacy Python that doesn't verify HTTPS certificates by default
-                    pass
-                else:  #   Handle target environment that doesn't support HTTPS verification
-                    ssl._create_default_https_context = _create_unverified_https_context
+                    data = conn.recv(BUFFER_SIZE)
+                except:
+                    break
 
-                eapi_conn = jsonrpclib.Server(url)
-                
-                payload = ["show lldp neighbors"]
-                print(payload)
-                response = eapi_conn.runCmds(1, payload)[0]
-                neighbors = response["lldpNeighbors"]
+                if not data:
+                    break
+                data_str = data.decode()  # received (switch_name, user_name, eapi_password)
+                data_str = eval(data_str) # eval converts string -> list
+                # Could receive two types of messages 1) and ARP table update message, or 2) a new switch discovery message.
+                print(data_str)
+                if data_str[1] == "ARP":
+                    print("Received ARP update message from", data_str[0])
+                    if self.fetchArpTable(data_str[0]):
+                        response = "Sucessful ARP update."
+                    else:
+                        response = "Failed ARP update."
+                else:
+                    print("Received switch information from", data_str)
+                    ips[data_str[0]] = addr[0]
+                    usernames[data_str[0]] = data_str[1]
+                    passwords[data_str[0]] = data_str[2]
+                    #print(ips)
+                    #print(usernames)
+                    #print(passwords)
+                    url = "https://{}:{}@{}/command-api".format(
+                        usernames[data_str[0]], passwords[data_str[0]], ips[data_str[0]]
+                    )  # url format(username, password, ip)
+                    #print(url)
+                    #   Add the switch to the topology
+                    topology.add_node(data_str[0])  # add the switch to the graph by name
 
-                for n in neighbors:
-                    payload[0] = "show interfaces " + n["port"] + " status"
+                    #   SSL certificate check keeps failing; only use HTTPS verification if possible
+                    try:
+                        _create_unverified_https_context = ssl._create_unverified_context
+                    except AttributeError:  #   Legacy Python that doesn't verify HTTPS certificates by default
+                        pass
+                    else:  #   Handle target environment that doesn't support HTTPS verification
+                        ssl._create_default_https_context = _create_unverified_https_context
+
+                    eapi_conn = jsonrpclib.Server(url)
+                    
+                    payload = ["show lldp neighbors"]
+                    #print(payload)
                     response = eapi_conn.runCmds(1, payload)[0]
-                    neighbor_name = n["neighborDevice"]
-                    print(neighbor_name)
+                    neighbors = response["lldpNeighbors"]
 
-                    topology.add_edge(data_str, neighbor_name)
-                    topology[data_str][neighbor_name]["total_bandwidth"] = response[
-                        "interfaceStatuses"
-                    ][n["port"]]["bandwidth"]
-                    topology[data_str][neighbor_name]["ethA"] = n["port"]
-                    topology[data_str][neighbor_name]["ethB"] = n["neighborPort"]
+                    for n in neighbors:
+                        payload[0] = "show interfaces " + n["port"] + " status"
+                        response = eapi_conn.runCmds(1, payload)[0]
+                        neighbor_name = n["neighborDevice"]
+                        
+                        print("adding edge: (", data_str[0], ", ", neighbor_name, ")")
 
-                print(ips)
-                print(topology["sw24-r224"]["sw23-r224"]["ethA"])
-                print(topology["sw24-r224"]["sw23-r224"]["ethB"])
-                response = "Switch discovered by controller."
+                        topology.add_edge(data_str[0], neighbor_name)
+                        topology[data_str[0]][neighbor_name]["total_bandwidth"] = response[
+                            "interfaceStatuses"
+                        ][n["port"]]["bandwidth"]
 
-            conn.send(str.encode(response))  # echo
-        conn.close()
+                        topology[data_str[0]][neighbor_name]["ports"] = {}
+                        topology[data_str[0]][neighbor_name]["ports"][data_str[0]] = n["port"]
+                        topology[data_str[0]][neighbor_name]["ports"][neighbor_name] = n["neighborPort"]
+
+                    #print(ips)
+                    print(topology["sw24-r224"]["sw23-r224"]["ports"])
+                    response = "Switch discovered by controller."
+
+                conn.send(str.encode(response))  # echo
+            print("Connection with switch ended, listening for next connection")
+            conn.close()
 
     def fetchArpTable(self, switch_name):
         url = "https://{}:{}@{}/command-api".format(
@@ -316,9 +387,15 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
             arpTable = response["ipV4Neighbors"]
 
             for entry in arpTable:
-                if not entry["address"] in ips.values():
+                # Tee second half of the conditional is to ensure we don't add switch management IPs to the 
+                # possible paths. There could be a better way to do this in the future.
+                if not entry["address"] in ips.values() and entry["address"].find("10.16.224") == -1:
                     topology.add_node(entry["address"])
                     topology.add_edge(entry["address"], switch_name)
+                    topology[switch_name][entry["address"]]["total_bandwidth"] = 40000000000
+                    topology[switch_name][entry["address"]]["ports"] = {}
+                    topology[switch_name][entry["address"]]["ports"][switch_name] = entry["interface"]
+                    topology[switch_name][entry["address"]]["ports"][entry["address"]] = "N/A -- End Host" 
             return True
         except:
             return False
@@ -361,7 +438,7 @@ class HostManager(threading.Thread):  # Communicate with hosts
         server_address = (IP, PORT)
         s.bind(server_address)
         
-        time.sleep(60)
+        time.sleep(15)
         queue.put(req)
         print("put data in queue")
         while True:
@@ -383,5 +460,5 @@ class HostManager(threading.Thread):  # Communicate with hosts
 
 
 hm = HostManager()
-data = '{"src": "24.224.1.2", "src_port": "5001", "dest": "22.224.1.2", "resv": 10, "dura": 5.0, "protocol": "tcp", "dest_port": "5001"}'
+data = '{"src": "24.224.1.2", "src_port": "5001", "dest": "22.224.1.2", "resv": 30000, "dura": 5.0, "protocol": "tcp", "dest_port": "5001"}'
 req = hm.parseMsg(data, CONTROLLER_IP, CONTROLLER_PORT)
