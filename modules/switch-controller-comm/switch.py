@@ -18,28 +18,30 @@ parser.add_argument(
 parser.add_argument(
     "controllerPort", metavar="Port", type=str, help="Controller port number."
 )
-parser.add_argument("password", type=str, help="eAPI server password.")
+parser.add_argument("password", type=str, help="eAPI server password (Note: MUST escape any special characters i.e. $ with a \).")
 
 args = parser.parse_args()
 args = json.dumps(vars(args))  #    JSON FORMATTED ARGUMENTS
+args = json.loads(args)
 
 msg_prefix = "pfg_ip_broadcast_cl"
 svr_prefix = "pfg_ip_response_serv"
 switch_name = socket.gethostname()
-tcp_ip = args["controller"]
+tcp_ip = args["controllerIP"]
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((tcp_ip, TCP_PORT))
 
 #   SEND SWITCH DISCOVERY INFORMATION
 message = [switch_name, USER, args["password"]]
-s.send(str.encode(message))
+print("sending: ", message)
+s.send(str.encode(str(message)))
 data = s.recv(BUFFER_SIZE)
 
 #   SEND SWITCH ARP INFO
 # if argTable is updated:
 message = [switch_name, "ARP"]
-s.send(str.encode(message))
+s.send(str.encode(str(message)))
 data = s.recv(BUFFER_SIZE)
 
 s.close()
