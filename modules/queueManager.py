@@ -137,7 +137,7 @@ def establishReservation(
                 "configure",
                 "ip access-list acl_rsv_"
                 + data.id
-                + " permit udp "
+                + " permit tcp "
                 + data.senderIp
                 + " eq "
                 + data.senderPort
@@ -150,13 +150,28 @@ def establishReservation(
             resMesg["params"]["cmds"] = [
                 "enable",
                 "configure",
-                "ip access-list <name> permit udp <source ip> eq <source port> <dest ip> eq <dest port>",
+                "ip access-list acl_rsv_"
+                + data.id
+                + " permit udp "
+                + data.senderIp
+                + " eq "
+                + data.senderPort
+                + " "
+                + data.destIp
+                + " eq "
+                + data.destPort,
             ]
         else:
             resMesg["params"]["cmds"] = [
                 "enable",
                 "configure",
                 "ip access-list <name> permit ip <source ip> <dest ip>",
+                "ip access-list acl_rsv_"
+                + data.id
+                + " permit ip "
+                + data.senderIp
+                + " "
+                + data.destIp,
             ]
 
         # Creating a class map
@@ -345,20 +360,6 @@ class HostManager(threading.Thread):  # Communicate with hosts
 hm = HostManager()
 data = '{"src": "10.16.224.24", "src_port": "5000", "dest": "10.16.224.22", "resv": 10, "dura": 5.0, "protocol": "tcp", "dest_port": "5000"}'
 data = hm.parseMsg(data)
-data = prepareRequest(data)
-print(
-    "ip access-list acl_rsv_"
-    + str(data.id)
-    + " permit udp "
-    + data.senderIp
-    + " eq "
-    + data.senderPort
-    + " "
-    + data.destIp
-    + " eq "
-    + data.destPort
-)
-
 data = prepareRequest(data)
 print(
     "ip access-list acl_rsv_"
