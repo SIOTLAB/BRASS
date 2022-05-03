@@ -282,22 +282,20 @@ class HostManager(threading.Thread):  # Communicate with hosts
         threading.Thread.__init__(self, *args, **keywords)
         self.killed = False
 
-    def parseMsg(self, data, ip, port):
+    def parseMsg(self, data):
         print(data)
         data = json.loads(data)  # Host info stored in dict
         # data = json.loads(data.decode("UTF-8"))  # Host info stored in dict
-        data = ReservationRequest(data, ip, port)
+        data = ReservationRequest(
+            data["src"],
+            data["src_port"],
+            data["dest"],
+            data["dest_port"],
+            data["resv"],
+            data["dura"],
+            data["protocol"],
+        )
         print(data)
-        # ReservationRequest(senderIp, destIp, bandwidth, duration, port)
-        #         self.senderIp = senderIp
-        #         self.destIp = destIp
-        #         self.bandwidth = bandwidth
-        #         self.duration = (
-        #             duration
-        #         )  # duration is measured from when the request is established on the controller, scale is in seconds
-        #         self.senderPort = port
-        #         self.expirationTime = None
-        #         self.id = None  # id is added when reservation is established
         return data
 
     def run(self):
@@ -315,7 +313,7 @@ class HostManager(threading.Thread):  # Communicate with hosts
             data = str(data.decode())
 
             if data.startswith(msgPrefix):
-                data = self.parseMsg(data[len(msgPrefix) :], IP, PORT)
+                data = self.parseMsg(data[len(msgPrefix) :])
                 queue.put(data)  # Push reservation request to queue
 
     def localtrace(self, frame, event, arg):
@@ -329,5 +327,5 @@ class HostManager(threading.Thread):  # Communicate with hosts
 
 
 hm = HostManager()
-data = "{'src': '10.16.224.24', 'src_port': '5000', 'dest': '10.16.224.22', 'resv': 10, 'dura': 5.0, 'protocol': 'tcp', 'dest_port': '5000'}"
-hm.parseMsg(data, CONTROLLER_IP, CONTROLLER_PORT)
+data = '{"src": "10.16.224.24", "src_port": "5000", "dest": "10.16.224.22", "resv": 10, "dura": 5.0, "protocol": "tcp", "dest_port": "5000"}'
+hm.parseMsg(data)

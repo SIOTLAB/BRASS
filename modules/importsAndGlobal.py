@@ -25,13 +25,21 @@ resMesg = json.loads(
 
 
 class ReservationRequest:
-    def __init__(self, senderIp, destIp, bandwidth, duration, port):
+    def __init__(
+        self, senderIp, senderPort, destIp, destPort, bandwidth, duration, protocol
+    ):
         self.senderIp = senderIp
+        self.senderPort = senderPort
         self.destIp = destIp
+        self.destPort = destPort
         self.bandwidth = bandwidth
-        self.duration = (
-            duration
-        )  # duration is measured from when the request is established on the controller, scale is in seconds
-        self.senderPort = port
+        self.duration = duration
+        #   duration is measured from when the request is established on the controller, scale is in seconds
+
+        self.protocol = protocol.lower()
+        if self.protocol not in ["tcp", "udp", "ip"]:
+            print("ERROR: Unsupported protocol, defaulting to IP traffic.")
+            self.protocol = "ip"
+
         self.expirationTime = None
         self.id = None  # id is added when reservation is established
