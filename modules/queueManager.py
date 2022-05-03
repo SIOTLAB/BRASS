@@ -90,8 +90,8 @@ def checkPathBandwidth(path, bandwidth):
     # bandwidth is an attribut of edges
     edges = list(zip(path, path[1:]))
     #print(edges)
-    minLink = min(edges, key=lambda e: topology[e[0]][e[1]]["total_bandwidth"])
-    minBandwidth = topology[minLink[0]][minLink[1]]["total_bandwidth"]
+    minLink = min(edges, key=lambda e: topology[e[0]][e[1]]["bandwidth"])
+    minBandwidth = topology[minLink[0]][minLink[1]]["bandwidth"]
     #print(bandwidth, minBandwidth)
     return bandwidth <= int(minBandwidth)
 
@@ -99,7 +99,7 @@ def checkPathBandwidth(path, bandwidth):
 def getPath(resReq):  # returns a list of IP addresses of swtiches along route
     paths = list(
         nx.shortest_simple_paths(
-            topology, resReq.senderIp, resReq.destIp, weight="total_bandwidth"
+            topology, resReq.senderIp, resReq.destIp, weight="bandwidth"
         )
     )
     bestPath = None
@@ -124,7 +124,7 @@ def establishReservation(
         #print("No path found")
         message = "NO"
         return message
-    pprint(path)
+    print("path found:", path)
     for switch in path:
         # Don't send eAPI commands to end hosts -- may be a better way to implement in the future.
         # Currently, this relies on naming convention of switches as sw<num>-<rack>
@@ -146,28 +146,42 @@ def establishReservation(
         eapi_conn = jsonrpclib.Server(url)
         # switch 22 has maximum burst size of 128 for some reason, while rest have 256. I have no idea why haha.
         burst_size = 128 if switch.find('22') == 2 else 256 
+
+        # calculate new remaining bandwidth on the link
+        edges = list(zip(path, path[1:]))
+        for link in edges:
+            if link[0] == switch or link[1] == switch:
+                found = link
+                break
+        #print(link)
+        new_remaining = topology[link[0]][link[1]]["bandwidth"] - resReq.bandwidth
+        topology[link[0]][link[1]]["bandwidth"] = new_remaining
+
         resMesg["params"]["cmds"] = [
             "enable",
             "configure",
             f"ip access-list {resReq.id}",
             f"permit tcp {resReq.senderIp}/24 eq {resReq.senderPort} {resReq.destIp}/24 eq {resReq.senderPort}",
             "exit",
+            "ip access-list default",
+            "permit ip any any",
+            "exit",
             f"class-map match-any {resReq.id}",
             f"match ip access-group {resReq.id}",
             "exit",
             f"policy-map {resReq.id}",
             f"class {resReq.id}",
-            f"police rate {resReq.bandwidth} mbps burst-size {burst_size} mbytes",
+            f"police rate {resReq.bandwidth} bps burst-size {burst_size} mbytes",
             "exit",
             "class default",
-            f"police rate 10000 mbps burst-size {burst_size} mbytes",
+            f"police rate {new_remaining} bps burst-size {burst_size} mbytes",
             "exit",
             "exit",
             #"interface ethernet 1/1",
             #f"service-policy input {resReq.id}",
             #"exit",
         ]
-        print(resMesg["params"]["cmds"])
+        #print(resMesg["params"]["cmds"])
         # "ip access-list <name> permit tcp <source ip> eq <source port> <dest ip> eq <dest port>"
         # "ip access-list <name> permit ip <source ip> <dest ip>"
         
@@ -199,12 +213,11 @@ def establishReservation(
         # interface ethernet 1/1
         # service-policy input test1
         
-        #print(url)
         response = eapi_conn.runCmds(1, resMesg["params"]["cmds"])[0]
-        #print(response)
+        print(f"Established policy map on switch: {switch}")
         
     edges = list(zip(path, path[1:]))
-    pprint(edges)
+    #pprint(edges)
     
     for edge in edges:
         sideA, sideB = edge
@@ -230,6 +243,7 @@ def establishReservation(
                 "exit"
             ]
             response = eapi_conn.runCmds(1, cmds)[0]
+            print(f"Applied policy map to switch: {sideA}, port {eth}")
 
         # if sideB represents a switch, if its an end host, no reservation to apply.
         if sideB.find("sw") != -1:
@@ -253,6 +267,7 @@ def establishReservation(
                 "exit"
             ]
             response = eapi_conn.runCmds(1, cmds)[0]
+            print(f"Applied policy map to switch: {sideB}, port {eth}")
 
     currentId = resReq.id
     establishedRequests[currentId] = resReq
@@ -263,7 +278,7 @@ def establishReservation(
 
 def consumer(queue, lock):  # Handle queued requests
     # block on empty queue
-    print("consumer starts")
+    print("consumer starting")
     while True:
         item = queue.get()
         with lock:
@@ -283,6 +298,7 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
         # was getting an error below, changed to hard coded
         s.bind(("10.16.224.150", 5005))
         s.listen(1)
+        print("switch handler listening at 10.16.224.150 on port 5005")
         global BUFFER_SIZE
         global ips
         global topology
@@ -354,13 +370,14 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                         topology[data_str[0]][neighbor_name]["total_bandwidth"] = response[
                             "interfaceStatuses"
                         ][n["port"]]["bandwidth"]
+                        topology[data_str[0]][neighbor_name]["bandwidth"] = topology[data_str[0]][neighbor_name]["total_bandwidth"]
 
                         topology[data_str[0]][neighbor_name]["ports"] = {}
                         topology[data_str[0]][neighbor_name]["ports"][data_str[0]] = n["port"]
                         topology[data_str[0]][neighbor_name]["ports"][neighbor_name] = n["neighborPort"]
 
                     #print(ips)
-                    print(topology["sw24-r224"]["sw23-r224"]["ports"])
+                    #print(topology["sw24-r224"]["sw23-r224"]["ports"])
                     response = "Switch discovered by controller."
 
                 conn.send(str.encode(response))  # echo
@@ -392,10 +409,20 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                 if not entry["address"] in ips.values() and entry["address"].find("10.16.224") == -1:
                     topology.add_node(entry["address"])
                     topology.add_edge(entry["address"], switch_name)
-                    topology[switch_name][entry["address"]]["total_bandwidth"] = 40000000000
+                    
+                    cmds = [
+                        "enable",
+                        f"show interfaces {entry['interface']} status"
+                    ]
+                    response = eapi_conn.runCmds(1, cmds)[1]
+                    bandwidth = response['interfaceStatuses'][entry['interface']]['bandwidth']
+
+                    topology[switch_name][entry["address"]]["total_bandwidth"] = bandwidth
+                    topology[switch_name][entry["address"]]["bandwidth"] = bandwidth
+
                     topology[switch_name][entry["address"]]["ports"] = {}
                     topology[switch_name][entry["address"]]["ports"][switch_name] = entry["interface"]
-                    topology[switch_name][entry["address"]]["ports"][entry["address"]] = "N/A -- End Host" 
+                    topology[switch_name][entry["address"]]["ports"][entry["address"]] = "N/A -- End Host"
             return True
         except:
             return False
@@ -413,7 +440,7 @@ class HostManager(threading.Thread):  # Communicate with hosts
         print(data)
         data = json.loads(data)  # Host info stored in dict
         # data = json.loads(data.decode("UTF-8"))  # Host info stored in dict
-        data = ReservationRequest(data["src"], data["dest"], data["resv"], data["dura"], data["src_port"])
+        data = ReservationRequest(data["src"], data["dest"], int(data["resv"])*1000000, data["dura"], data["src_port"])
         # ReservationRequest(senderIp, destIp, bandwidth, duration, port)
         #         self.senderIp = senderIp
         #         self.destIp = destIp
@@ -437,10 +464,11 @@ class HostManager(threading.Thread):  # Communicate with hosts
         PORT = 9434
         server_address = (IP, PORT)
         s.bind(server_address)
-        
-        time.sleep(15)
-        queue.put(req)
-        print("put data in queue")
+        print("Host manager bound on 10.16.224.150 port 9434") 
+
+        #time.sleep(15)
+        #queue.put(req)
+        #print("put data in queue")
         while True:
             data, address = s.recvfrom(4096)
             data = str(data.decode())

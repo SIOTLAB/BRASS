@@ -57,7 +57,7 @@ message = json.dumps(args)  # JSON FORMATTED ARGUMENTS
 msgPrefix = "pfg_ip_broadcast_cl"
 print(msgPrefix + message)
 # print({"test": 5, **args})
-exit()
+#exit()
 
 # CREATE UDP SOCKET
 sock = socket(AF_INET, SOCK_DGRAM)
@@ -91,7 +91,7 @@ try:
         except timeout:
             timeout_count += 1
             print("\ttimeout " + str(timeout_count))
-            if timeout_count == 5:
+            if timeout_count == 1:
                 break
             else:
                 print("\ttrying again...")
