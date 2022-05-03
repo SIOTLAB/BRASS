@@ -25,39 +25,30 @@ def protocol_type(x):
 parser = argparse.ArgumentParser(
     description="Request an amount of reservation from a network controller."
 )
+parser.add_argument("control_ip", metavar="A.B.C.D", type=str, help="controller IP.")
+parser.add_argument("control_port", metavar="C_Port", type=str, help="controller Port.")
+parser.add_argument("src", metavar="E.F.G.H", type=str, help="source device IP.")
+parser.add_argument("src_port", metavar="S_Port", type=str, help="source device Port.")
 parser.add_argument(
-    "src", metavar="A.B.C.D", type=str, help="source IP for reserved communication"
+    "dest_ip", metavar="I.J.K.L", type=str, help="destination device IP."
 )
 parser.add_argument(
-    "src_port", metavar="sPort", type=str, help="source port for reserved communication"
+    "dest_port", metavar="D_Port", type=str, help="destination device Port."
 )
 parser.add_argument(
-    "dest",
-    metavar="A.B.C.D",
-    type=str,
-    help="destination IP for reserved communication",
+    "resv", metavar="KB", type=int, help="Reservation bandwidth in kilobytes."
 )
 parser.add_argument(
-    "dest_port",
-    metavar="dPort",
-    type=str,
-    help="destination port for reserved communication",
+    "dura", metavar="sec", type=duration_type, help="Reservation duration in seconds."
 )
 parser.add_argument(
-    "resv", metavar="KB", type=int, help="amount of bandwidth reservation in KiloBytes"
+    "protocol", type=protocol_type, help="Traffic flow protocol: TPC, UDP, or IP."
 )
-parser.add_argument(
-    "dura", metavar="sec", type=duration_type, help="duration of reservation in seconds"
-)
-parser.add_argument("protocol", type=protocol_type, help="protocol of the traffic flow")
 
 args = vars(parser.parse_args())
+controller_ip = args.pop("control_ip")
+controller_port = args.pop("control_port")
 message = json.dumps(args)  # JSON FORMATTED ARGUMENTS
-
-msgPrefix = "pfg_ip_broadcast_cl"
-print(msgPrefix + message)
-# print({"test": 5, **args})
-exit()
 
 # CREATE UDP SOCKET
 sock = socket(AF_INET, SOCK_DGRAM)
@@ -65,9 +56,7 @@ sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 # sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 sock.settimeout(5)
 
-IP = "10.16.224.150"
-PORT = 9434
-server_address = (IP, PORT)
+server_address = (controller_ip, controller_port)
 msgPrefix = "pfg_ip_broadcast_cl"
 svrPrefix = "pfg_ip_response_serv"
 

@@ -40,23 +40,23 @@ rsrv_success = ["Reservation established"]
 rsrv_error = ["Bandwidth not available", "Path does not exist", "Reservation Failed"]
 
 
-def errorChecking(resReq, message):
+def errorChecking(data, message):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    IP = resReq.senderIp
-    PORT = resReq.senderPort
+    IP = data.senderIp
+    PORT = data.senderPort
     server_address = (IP, PORT)
     s.bind(server_address)
 
     #   if message starts with YES: the reservation could be instantiated
     if message.startswith("YES"):
-        s.sendto((svrPrefix + rsrv_success[0]).encode(), resReq.address)
+        s.sendto((svrPrefix + rsrv_success[0]).encode(), data.address)
 
     #   if message starts with NO: the reservation could NOT be instantiated
     if message.startswith("NO"):
-        s.sendto((svrPrefix + rsrv_error[2]).encode(), resReq.address)
+        s.sendto((svrPrefix + rsrv_error[2]).encode(), data.address)
 
     #   if message starts with CLOSE: quit the host manager thread(s)
     if message.startswith("CLOSE"):
@@ -66,20 +66,17 @@ def errorChecking(resReq, message):
     return True
 
 
-def prepareRequest(resReq):
-    # generate an ID for this reservation
-    # return the ID generated and send to the end device
+def prepareRequest(data):
+    # Generate an ID for this reservation
+    # Return the ID generated and send to the end device
     global id
-    currentId = id
+    data.id = id
     id += 1
-    resReq.id = currentId
     expirationTime = datetime.datetime.utcnow() + datetime.timedelta(
-        minutes=resReq.duration
+        minutes=data.duration
     )
-    resReq.expirationTime = expirationTime
-
-    pprint(vars(resReq))
-    return resReq
+    data.expirationTime = expirationTime
+    return data
 
 
 def checkPathBandwidth(path, bandwidth):
@@ -90,16 +87,16 @@ def checkPathBandwidth(path, bandwidth):
     return bandwidth >= minBandwidth
 
 
-def getPath(resReq):  # returns a list of IP addresses of swtiches along route
+def getPath(data):  # returns a list of IP addresses of swtiches along route
     paths = list(
         nx.shortest_simple_paths(
-            topology, resReq.senderIp, resReq.destIp, weight="bandwidth"
+            topology, data.senderIp, data.destIp, weight="bandwidth"
         )
     )
 
     bestPath = None
     for path in paths:
-        hasBandwidth = checkPathBandwidth(path, resReq.bandwidth)
+        hasBandwidth = checkPathBandwidth(path, data.bandwidth)
         if hasBandwidth:
             # has enough bandwidth
             bestPath = path
@@ -109,12 +106,12 @@ def getPath(resReq):  # returns a list of IP addresses of swtiches along route
 
 
 def establishReservation(
-    resReq
+    data
 ):  # returns whether or not the request was established via a message
     global resMesg
     message = "LOG: "
 
-    path = getPath(resReq)
+    path = getPath(data)
     if not (path):
         message = "NO"
         return message
@@ -134,13 +131,33 @@ def establishReservation(
 
         eapi_conn = jsonrpclib.Server(url)
 
-        resMesg["params"]["cmds"] = [
-            "enable",
-            "configure",
-            "ip access-list <name> permit udp <source ip> eq <source port> <dest ip> eq <dest port>",
-        ]
-        # "ip access-list <name> permit tcp <source ip> eq <source port> <dest ip> eq <dest port>"
-        # "ip access-list <name> permit ip <source ip> <dest ip>"
+        if data.protocl == "tcp":
+            resMesg["params"]["cmds"] = [
+                "enable",
+                "configure",
+                "ip access-list acl_rsv_"
+                + data.id
+                + " permit udp "
+                + data.senderIp
+                + " eq "
+                + data.senderPort
+                + " "
+                + data.destIp
+                + " eq "
+                + data.destPort,
+            ]
+        elif data.protocl == "udp":
+            resMesg["params"]["cmds"] = [
+                "enable",
+                "configure",
+                "ip access-list <name> permit udp <source ip> eq <source port> <dest ip> eq <dest port>",
+            ]
+        else:
+            resMesg["params"]["cmds"] = [
+                "enable",
+                "configure",
+                "ip access-list <name> permit ip <source ip> <dest ip>",
+            ]
 
         # Creating a class map
         # Creating an ACL for that specific source/dest
@@ -151,8 +168,8 @@ def establishReservation(
         response = eapi_conn.runCmds(1, payload)[0]
         neighbors = response["lldpNeighbors"]
 
-    currentId = resReq.id
-    establishedRequests[currentId] = resReq
+    currentId = data.id
+    establishedRequests[currentId] = data
     message = "YES"
 
     return message
@@ -164,9 +181,9 @@ def consumer(queue, lock):  # Handle queued requests
     while True:
         item = queue.get()
         with lock:
-            resReq = prepareRequest(item)  # Format the request
-            message = establishReservation(resReq)
-            errorChecking(resReq, message)
+            data = prepareRequest(item)  # Format the request
+            message = establishReservation(data)
+            errorChecking(data, message)
         queue.task_done()
 
 
@@ -283,9 +300,7 @@ class HostManager(threading.Thread):  # Communicate with hosts
         self.killed = False
 
     def parseMsg(self, data):
-        print(data)
         data = json.loads(data)  # Host info stored in dict
-        # data = json.loads(data.decode("UTF-8"))  # Host info stored in dict
         data = ReservationRequest(
             data["src"],
             data["src_port"],
@@ -295,7 +310,6 @@ class HostManager(threading.Thread):  # Communicate with hosts
             data["dura"],
             data["protocol"],
         )
-        print(data)
         return data
 
     def run(self):
@@ -326,6 +340,35 @@ class HostManager(threading.Thread):  # Communicate with hosts
         self.killed = True
 
 
+# TEST 1
+#   Reservation messages received from hosts are formated as follows in 'data', and parseMsg() should return a correctly configured ReservationRequest object.
 hm = HostManager()
 data = '{"src": "10.16.224.24", "src_port": "5000", "dest": "10.16.224.22", "resv": 10, "dura": 5.0, "protocol": "tcp", "dest_port": "5000"}'
-hm.parseMsg(data)
+data = hm.parseMsg(data)
+data = prepareRequest(data)
+print(
+    "ip access-list acl_rsv_"
+    + str(data.id)
+    + " permit udp "
+    + data.senderIp
+    + " eq "
+    + data.senderPort
+    + " "
+    + data.destIp
+    + " eq "
+    + data.destPort
+)
+
+data = prepareRequest(data)
+print(
+    "ip access-list acl_rsv_"
+    + str(data.id)
+    + " permit udp "
+    + data.senderIp
+    + " eq "
+    + data.senderPort
+    + " "
+    + data.destIp
+    + " eq "
+    + data.destPort
+)
