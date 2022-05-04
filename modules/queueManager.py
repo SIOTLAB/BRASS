@@ -443,9 +443,7 @@ class HostManager(threading.Thread):  # Communicate with hosts
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-        IP = "10.16.224.150"
-        PORT = 9434
-        server_address = (IP, PORT)
+        server_address = (glob.CONTROLLER_IP, glob.CONTROLLER_PORT+1)
         s.bind(server_address)
         print("Host manager bound on 10.16.224.150 port 9434") 
 
