@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python3
 
 import argparse
 import json
@@ -80,7 +80,7 @@ try:
         except timeout:
             timeout_count += 1
             print("\ttimeout " + str(timeout_count))
-            if timeout_count == 5:
+            if timeout_count == 1:
                 break
             else:
                 print("\ttrying again...")

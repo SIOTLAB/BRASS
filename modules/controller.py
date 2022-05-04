@@ -57,11 +57,11 @@ def cleanReservations():
 switchHandler = queueManager.SwitchHandler()
 hostManager = queueManager.HostManager()
 
+print("threads starting")
 lock = threading.Lock()
 reservationHandler = threading.Thread(
     target=queueManager.consumer, args=(queue, lock), daemon=True
 )
-
 # START THREADS
 switchHandler.start()
 hostManager.start()
