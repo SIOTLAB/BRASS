@@ -10,7 +10,10 @@
 
 import argparse
 import json
-from importsAndGlobal import queue, establishedRequests, datetime, threading
+import datetime
+import threading
+import queue
+import importsAndGlobal as glob
 from random import randint
 import queueManager
 
@@ -21,11 +24,11 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     "address", metavar="A.B.C.D", type=str, help="Controller IP address."
 )
-parser.add_argument("port", metavar="Port", type=str, help="Controller port number.")
+parser.add_argument("port", metavar="Port", type=str, help="Controller Port number.")
 args = parser.parse_args()
 args = json.dumps(vars(args))  #    JSON FORMATTED ARGUMENTS
-TCP_IP = args["address"]
-TCP_PORT = args["port"]
+glob.CONTROLLER_IP = args["address"]
+glob.CONTROLLER_PORT = args["port"]
 
 # def createMockReqs():
 #     # Temporary for testing
@@ -42,10 +45,10 @@ TCP_PORT = args["port"]
 
 
 def cleanReservations():
-    for entry in establishedRequests.values():
+    for entry in glob.establishedRequests.values():
         currentTime = datetime.datetime.utcnow()
         if entry.expirationTime < currentTime:
-            establishedRequests.popitem(entry)
+            glob.establishedRequests.popitem(entry)
 
 
 # createMockReqs()

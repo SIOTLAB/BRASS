@@ -5,24 +5,10 @@ from distutils.log import error
 import re
 
 # from tkinter import Toplevel
-from importsAndGlobal import (
-    CONTROLLER_IP,
-    CONTROLLER_PORT,
-    queue,
-    establishedRequests,
-    threading,
-    datetime,
-    BUFFER_SIZE,
-    msgPrefix,
-    svrPrefix,
-    ReservationRequest,
-    id,
-    ips,
-    topology,
-    usernames,
-    passwords,
-    resMesg,
-)
+import datetime
+import threading
+import queue
+import importsAndGlobal as glob
 import json
 import jsonrpclib
 import ssl
@@ -52,11 +38,11 @@ def errorChecking(data, message):
 
     #   if message starts with YES: the reservation could be instantiated
     if message.startswith("YES"):
-        s.sendto((svrPrefix + rsrv_success[0]).encode(), data.address)
+        s.sendto((glob.svrPrefix + rsrv_success[0]).encode(), data.address)
 
     #   if message starts with NO: the reservation could NOT be instantiated
     if message.startswith("NO"):
-        s.sendto((svrPrefix + rsrv_error[2]).encode(), data.address)
+        s.sendto((glob.svrPrefix + rsrv_error[2]).encode(), data.address)
 
     #   if message starts with CLOSE: quit the host manager thread(s)
     if message.startswith("CLOSE"):
@@ -184,7 +170,7 @@ def establishReservation(
         neighbors = response["lldpNeighbors"]
 
     currentId = data.id
-    establishedRequests[currentId] = data
+    glob.establishedRequests[currentId] = data
     message = "YES"
 
     return message
@@ -208,7 +194,7 @@ def consumer(queue, lock):  # Handle queued requests
 class SwitchHandler(threading.Thread):  # Communicate with switches
     def run(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind((TCP_IP, TCP_PORT))
+        s.bind((glob.CONTROLLER_IP, glob.CONTROLLER_PORT))
         s.listen(1)
         global BUFFER_SIZE
         global ips
@@ -316,7 +302,7 @@ class HostManager(threading.Thread):  # Communicate with hosts
 
     def parseMsg(self, data):
         data = json.loads(data)  # Host info stored in dict
-        data = ReservationRequest(
+        data = glob.ReservationRequest(
             data["src"],
             data["src_port"],
             data["dest"],
@@ -341,8 +327,8 @@ class HostManager(threading.Thread):  # Communicate with hosts
             data, address = s.recvfrom(4096)
             data = str(data.decode())
 
-            if data.startswith(msgPrefix):
-                data = self.parseMsg(data[len(msgPrefix) :])
+            if data.startswith(glob.msgPrefix):
+                data = self.parseMsg(data[len(glob.msgPrefix) :])
                 queue.put(data)  # Push reservation request to queue
 
     def localtrace(self, frame, event, arg):
