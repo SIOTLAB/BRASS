@@ -26,7 +26,7 @@ resMesg = json.loads(
 
 class ReservationRequest:
     def __init__(
-        self, senderIp, senderPort, destIp, destPort, bandwidth, duration, protocol
+        self, senderIp, senderPort, destIp, destPort, bandwidth, duration, protocol, callbackIp, callbackPort
     ):
         self.senderIp = senderIp
         self.senderPort = senderPort
@@ -34,6 +34,8 @@ class ReservationRequest:
         self.destPort = destPort
         self.bandwidth = bandwidth
         self.duration = duration
+        self.callbackIp = callbackIp
+        self.callbackPort = callbackPort
         #   duration is measured from when the request is established on the controller, scale is in seconds
 
         self.protocol = protocol.lower()

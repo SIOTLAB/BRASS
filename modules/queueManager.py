@@ -32,8 +32,8 @@ def errorChecking(data, message):
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    IP = data.senderIp
-    PORT = data.senderPort
+    IP = data.callbackIp
+    PORT = data.callbackPort
     host_address = (IP, int(PORT))
     # IP = resReq.senderIp
     # PORT = resReq.senderPort
@@ -41,7 +41,7 @@ def errorChecking(data, message):
     # print(server_address)
     # I don't understand what is happening here, why do we want to bind this address on controller side?
     # s.bind(server_address)
-
+    print(f"reservation established? : {message}")
     #   if message starts with YES: the reservation could be instantiated
     if message.startswith("YES"):
         s.sendto((glob.svrPrefix + rsrv_success[0]).encode(), host_address)
@@ -363,8 +363,6 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                         glob.topology[data_str[0]][neighbor_name]["ports"][data_str[0]] = n["port"]
                         glob.topology[data_str[0]][neighbor_name]["ports"][neighbor_name] = n["neighborPort"]
 
-                    #print(glob.ips)
-                    print(glob.topology["sw24-r224"]["sw23-r224"]["ports"])
                     response = "Switch discovered by controller."
 
                 conn.send(str.encode(response))  # echo
@@ -433,6 +431,8 @@ class HostManager(threading.Thread):  # Communicate with hosts
             int(data["resv"])*1000000,
             data["dura"],
             data["protocol"],
+            data["callback_ip"],
+            data["callback_port"]
         )
         return data
 
@@ -445,13 +445,14 @@ class HostManager(threading.Thread):  # Communicate with hosts
         s.bind(server_address)
         print(f"Host manager bound on {glob.CONTROLLER_IP} port {glob.CONTROLLER_PORT+1}") 
 
-        #time.sleep(15)
-        #queue.put(req)
-        #print("put data in queue")
         while True:
             data, address = s.recvfrom(4096)
             data = str(data.decode())
+            data = json.loads(data[len(glob.msgPrefix):])
+            data['callback_ip'] = address[0]
+            data['callback_port'] = address[1]
 
+            data = glob.msgPrefix + json.dumps(data)
             if data.startswith(glob.msgPrefix):
                 data = self.parseMsg(data[len(glob.msgPrefix) :])
                 glob.queue.put(data)  # Push reservation request to queue
@@ -469,7 +470,7 @@ class HostManager(threading.Thread):  # Communicate with hosts
 # TEST 1
 #   Reservation messages received from hosts are formated as follows in 'data', and parseMsg() should return a correctly configured ReservationRequest object.
 hm = HostManager()
-data = '{"src_ip": "10.16.224.24", "src_port": "5000", "dest_ip": "10.16.224.22", "resv": 10, "dura": 5.0, "protocol": "tcp", "dest_port": "5000"}'
+data = '{"src_ip": "10.16.224.24", "src_port": "5000", "dest_ip": "10.16.224.22", "resv": 10, "dura": 5.0, "protocol": "tcp", "dest_port": "5000", "callback_ip": "1.1.1.1", "callback_port": 4567}'
 data = hm.parseMsg(data)
 data = prepareRequest(data)
 print(

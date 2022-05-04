@@ -72,6 +72,7 @@ try:
             print("waiting for response")
             data, server = sock.recvfrom(4096)
             if data.decode("UTF-8").startswith(svrPrefix):
+                data = data.decode("UTF-8")
                 print("received: " + data[len(svrPrefix) :])
                 print("server ip: " + str(server[0]))
                 break
