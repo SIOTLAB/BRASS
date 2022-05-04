@@ -27,7 +27,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument("control_ip", metavar="A.B.C.D", type=str, help="controller IP.")
 parser.add_argument("control_port", metavar="C_Port", type=str, help="controller Port.")
-parser.add_argument("src", metavar="E.F.G.H", type=str, help="source device IP.")
+parser.add_argument("src_ip", metavar="E.F.G.H", type=str, help="source device IP.")
 parser.add_argument("src_port", metavar="S_Port", type=str, help="source device Port.")
 parser.add_argument(
     "dest_ip", metavar="I.J.K.L", type=str, help="destination device IP."
@@ -47,7 +47,7 @@ parser.add_argument(
 
 args = vars(parser.parse_args())
 controller_ip = args.pop("control_ip")
-controller_port = args.pop("control_port")
+controller_port = int(args.pop("control_port"))
 message = json.dumps(args)  # JSON FORMATTED ARGUMENTS
 
 # CREATE UDP SOCKET

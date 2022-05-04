@@ -64,7 +64,7 @@ def prepareRequest(data):
 
     data.id = glob.id
     glob.id += 1
-    data.id = "resv" + str(currentId)
+    data.id = "resv" + str(data.id)
     expirationTime = datetime.datetime.utcnow() + datetime.timedelta(
         minutes=data.duration
     )
@@ -77,8 +77,8 @@ def checkPathBandwidth(path, bandwidth):
     # bandwidth is an attribut of edges
     edges = list(zip(path, path[1:]))
     #print(edges)
-    minLink = min(edges, key=lambda e: topology[e[0]][e[1]]["bandwidth"])
-    minBandwidth = topology[minLink[0]][minLink[1]]["bandwidth"]
+    minLink = min(edges, key=lambda e: glob.topology[e[0]][e[1]]["bandwidth"])
+    minBandwidth = glob.topology[minLink[0]][minLink[1]]["bandwidth"]
     #print(bandwidth, minBandwidth)
     return bandwidth <= int(minBandwidth)
 
@@ -86,7 +86,7 @@ def checkPathBandwidth(path, bandwidth):
 def getPath(data):  # returns a list of IP addresses of swtiches along route
     paths = list(
         nx.shortest_simple_paths(
-            topology, data.senderIp, data.destIp, weight="bandwidth"
+            glob.topology, data.senderIp, data.destIp, weight="bandwidth"
         )
     )
     bestPath = None
@@ -119,7 +119,7 @@ def establishReservation(
             continue
 
         url = "https://{}:{}@{}/command-api".format(
-            usernames[switch], passwords[switch], ips[switch]
+            glob.usernames[switch], glob.passwords[switch], glob.ips[switch]
         )
 
         #   SSL certificate check keeps failing; only use HTTPS verification if possible
@@ -141,31 +141,31 @@ def establishReservation(
                 found = link
                 break
         #print(link)
-        new_remaining = topology[link[0]][link[1]]["bandwidth"] - resReq.bandwidth
-        topology[link[0]][link[1]]["bandwidth"] = new_remaining
+        new_remaining = glob.topology[link[0]][link[1]]["bandwidth"] - data.bandwidth
+        glob.topology[link[0]][link[1]]["bandwidth"] = new_remaining
 
-        resMesg["params"]["cmds"] = [
+        cmds = [
             "enable",
             "configure",
-            f"ip access-list {resReq.id}",
-            f"permit tcp {resReq.senderIp}/24 eq {resReq.senderPort} {resReq.destIp}/24 eq {resReq.senderPort}",
+            f"ip access-list {data.id}",
+            f"permit tcp {data.senderIp}/24 eq {data.senderPort} {data.destIp}/24 eq {data.senderPort}",
             "exit",
             "ip access-list default",
             "permit ip any any",
             "exit",
-            f"class-map match-any {resReq.id}",
-            f"match ip access-group {resReq.id}",
+            f"class-map match-any {data.id}",
+            f"match ip access-group {data.id}",
             "exit",
-            f"policy-map {resReq.id}",
-            f"class {resReq.id}",
-            f"police rate {resReq.bandwidth} bps burst-size {burst_size} mbytes",
+            f"policy-map {data.id}",
+            f"class {data.id}",
+            f"police rate {data.bandwidth} bps burst-size {burst_size} mbytes",
             "exit",
             "class default",
             f"police rate {new_remaining} bps burst-size {burst_size} mbytes",
             "exit",
             "exit",
             #"interface ethernet 1/1",
-            #f"service-policy input {resReq.id}",
+            #f"service-policy input {data.id}",
             #"exit",
         ]
         #print(resMesg["params"]["cmds"])
@@ -200,7 +200,7 @@ def establishReservation(
         # interface ethernet 1/1
         # service-policy input test1
         
-        response = eapi_conn.runCmds(1, resMesg["params"]["cmds"])[0]
+        response = eapi_conn.runCmds(1, cmds)[0]
         print(f"Established policy map on switch: {switch}")
         
     edges = list(zip(path, path[1:]))
@@ -210,9 +210,9 @@ def establishReservation(
         sideA, sideB = edge
         # if sideA represents a switch, if its an end host, no reservation to apply.
         if sideA.find("sw") != -1:
-            eth = topology[sideA][sideB]["ports"][sideA] 
+            eth = glob.topology[sideA][sideB]["ports"][sideA] 
             url = "https://{}:{}@{}/command-api".format(
-                usernames[sideA], passwords[sideA], ips[sideA]
+                glob.usernames[sideA], glob.passwords[sideA], glob.ips[sideA]
             )
             try:
                 _create_unverified_https_context = ssl._create_unverified_context
@@ -226,7 +226,7 @@ def establishReservation(
                 "enable",
                 "configure", 
                 f"interface {eth}",
-                f"service-policy input {resReq.id}"
+                f"service-policy input {data.id}",
                 "exit"
             ]
             response = eapi_conn.runCmds(1, cmds)[0]
@@ -234,9 +234,9 @@ def establishReservation(
 
         # if sideB represents a switch, if its an end host, no reservation to apply.
         if sideB.find("sw") != -1:
-            eth = topology[sideA][sideB]["ports"][sideB]
+            eth = glob.topology[sideA][sideB]["ports"][sideB]
             url = "https://{}:{}@{}/command-api".format(
-                usernames[sideB], passwords[sideB], ips[sideB]
+                glob.usernames[sideB], glob.passwords[sideB], glob.ips[sideB]
             )
             try:
                 _create_unverified_https_context = ssl._create_unverified_context
@@ -250,7 +250,7 @@ def establishReservation(
                 "enable",
                 "configure", 
                 f"interface {eth}",
-                f"service-policy input {resReq.id}",
+                f"service-policy input {data.id}",
                 "exit"
             ]
             response = eapi_conn.runCmds(1, cmds)[0]
@@ -286,11 +286,11 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
         # s.bind(("10.16.224.150", 5005))
         s.listen(1)
         print("switch handler listening at 10.16.224.150 on port 5005")
-        global BUFFER_SIZE
-        global ips
-        global topology
-        global usernames
-        global passwords
+        #global BUFFER_SIZE
+        #global ips
+        #global glob.topology
+        #global usernames
+        #global passwords
         
         # Moved outside of while loop -- for TCP, we establish
         # connection once, and then send multiple messages through it.
@@ -300,7 +300,7 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
            
             while 1:
                 try:
-                    data = conn.recv(BUFFER_SIZE)
+                    data = conn.recv(glob.BUFFER_SIZE)
                 except:
                     break
 
@@ -318,18 +318,18 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                         response = "Failed ARP update."
                 else:
                     print("Received switch information from", data_str)
-                    ips[data_str[0]] = addr[0]
-                    usernames[data_str[0]] = data_str[1]
-                    passwords[data_str[0]] = data_str[2]
-                    #print(ips)
-                    #print(usernames)
-                    #print(passwords)
+                    glob.ips[data_str[0]] = addr[0]
+                    glob.usernames[data_str[0]] = data_str[1]
+                    glob.passwords[data_str[0]] = data_str[2]
+                    #print(glob.ips)
+                    #print(glob.usernames)
+                    #print(glob.passwords)
                     url = "https://{}:{}@{}/command-api".format(
-                        usernames[data_str[0]], passwords[data_str[0]], ips[data_str[0]]
+                        glob.usernames[data_str[0]], glob.passwords[data_str[0]], glob.ips[data_str[0]]
                     )  # url format(username, password, ip)
                     #print(url)
                     #   Add the switch to the topology
-                    topology.add_node(data_str[0])  # add the switch to the graph by name
+                    glob.topology.add_node(data_str[0])  # add the switch to the graph by name
 
                     #   SSL certificate check keeps failing; only use HTTPS verification if possible
                     try:
@@ -353,18 +353,18 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                         
                         print("adding edge: (", data_str[0], ", ", neighbor_name, ")")
 
-                        topology.add_edge(data_str[0], neighbor_name)
-                        topology[data_str[0]][neighbor_name]["total_bandwidth"] = response[
+                        glob.topology.add_edge(data_str[0], neighbor_name)
+                        glob.topology[data_str[0]][neighbor_name]["total_bandwidth"] = response[
                             "interfaceStatuses"
                         ][n["port"]]["bandwidth"]
-                        topology[data_str[0]][neighbor_name]["bandwidth"] = topology[data_str[0]][neighbor_name]["total_bandwidth"]
+                        glob.topology[data_str[0]][neighbor_name]["bandwidth"] = glob.topology[data_str[0]][neighbor_name]["total_bandwidth"]
 
-                        topology[data_str[0]][neighbor_name]["ports"] = {}
-                        topology[data_str[0]][neighbor_name]["ports"][data_str[0]] = n["port"]
-                        topology[data_str[0]][neighbor_name]["ports"][neighbor_name] = n["neighborPort"]
+                        glob.topology[data_str[0]][neighbor_name]["ports"] = {}
+                        glob.topology[data_str[0]][neighbor_name]["ports"][data_str[0]] = n["port"]
+                        glob.topology[data_str[0]][neighbor_name]["ports"][neighbor_name] = n["neighborPort"]
 
-                    #print(ips)
-                    #print(topology["sw24-r224"]["sw23-r224"]["ports"])
+                    #print(glob.ips)
+                    print(glob.topology["sw24-r224"]["sw23-r224"]["ports"])
                     response = "Switch discovered by controller."
 
                 conn.send(str.encode(response))  # echo
@@ -373,7 +373,7 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
 
     def fetchArpTable(self, switch_name):
         url = "https://{}:{}@{}/command-api".format(
-            usernames[switch_name], passwords[switch_name], ips[switch_name]
+            glob.usernames[switch_name], glob.passwords[switch_name], glob.ips[switch_name]
         )  # format(username, password, ip)
         #   SSL certificate check keeps failing; only use HTTPS verification if possible
         try:
@@ -393,9 +393,9 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
             for entry in arpTable:
                 # Tee second half of the conditional is to ensure we don't add switch management IPs to the 
                 # possible paths. There could be a better way to do this in the future.
-                if not entry["address"] in ips.values() and entry["address"].find("10.16.224") == -1:
-                    topology.add_node(entry["address"])
-                    topology.add_edge(entry["address"], switch_name)
+                if not entry["address"] in glob.ips.values() and entry["address"].find("10.16.224") == -1:
+                    glob.topology.add_node(entry["address"])
+                    glob.topology.add_edge(entry["address"], switch_name)
                     
                     cmds = [
                         "enable",
@@ -404,12 +404,12 @@ class SwitchHandler(threading.Thread):  # Communicate with switches
                     response = eapi_conn.runCmds(1, cmds)[1]
                     bandwidth = response['interfaceStatuses'][entry['interface']]['bandwidth']
 
-                    topology[switch_name][entry["address"]]["total_bandwidth"] = bandwidth
-                    topology[switch_name][entry["address"]]["bandwidth"] = bandwidth
+                    glob.topology[switch_name][entry["address"]]["total_bandwidth"] = bandwidth
+                    glob.topology[switch_name][entry["address"]]["bandwidth"] = bandwidth
 
-                    topology[switch_name][entry["address"]]["ports"] = {}
-                    topology[switch_name][entry["address"]]["ports"][switch_name] = entry["interface"]
-                    topology[switch_name][entry["address"]]["ports"][entry["address"]] = "N/A -- End Host"
+                    glob.topology[switch_name][entry["address"]]["ports"] = {}
+                    glob.topology[switch_name][entry["address"]]["ports"][switch_name] = entry["interface"]
+                    glob.topology[switch_name][entry["address"]]["ports"][entry["address"]] = "N/A -- End Host"
             return True
         except:
             return False
@@ -426,9 +426,9 @@ class HostManager(threading.Thread):  # Communicate with hosts
     def parseMsg(self, data):
         data = json.loads(data)  # Host info stored in dict
         data = glob.ReservationRequest(
-            data["src"],
+            data["src_ip"],
             data["src_port"],
-            data["dest"],
+            data["dest_ip"],
             data["dest_port"],
             int(data["resv"])*1000000,
             data["dura"],
@@ -436,16 +436,14 @@ class HostManager(threading.Thread):  # Communicate with hosts
         )
         return data
 
-    def run(self):
-        global req
-        print(req)
+    def run(self): 
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
         server_address = (glob.CONTROLLER_IP, glob.CONTROLLER_PORT+1)
         s.bind(server_address)
-        print("Host manager bound on 10.16.224.150 port 9434") 
+        print(f"Host manager bound on {glob.CONTROLLER_IP} port {glob.CONTROLLER_PORT+1}") 
 
         #time.sleep(15)
         #queue.put(req)
@@ -456,7 +454,7 @@ class HostManager(threading.Thread):  # Communicate with hosts
 
             if data.startswith(glob.msgPrefix):
                 data = self.parseMsg(data[len(glob.msgPrefix) :])
-                queue.put(data)  # Push reservation request to queue
+                glob.queue.put(data)  # Push reservation request to queue
 
     def localtrace(self, frame, event, arg):
         if self.killed:
@@ -471,7 +469,7 @@ class HostManager(threading.Thread):  # Communicate with hosts
 # TEST 1
 #   Reservation messages received from hosts are formated as follows in 'data', and parseMsg() should return a correctly configured ReservationRequest object.
 hm = HostManager()
-data = '{"src": "10.16.224.24", "src_port": "5000", "dest": "10.16.224.22", "resv": 10, "dura": 5.0, "protocol": "tcp", "dest_port": "5000"}'
+data = '{"src_ip": "10.16.224.24", "src_port": "5000", "dest_ip": "10.16.224.22", "resv": 10, "dura": 5.0, "protocol": "tcp", "dest_port": "5000"}'
 data = hm.parseMsg(data)
 data = prepareRequest(data)
 print(

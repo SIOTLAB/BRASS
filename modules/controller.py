@@ -27,8 +27,9 @@ parser.add_argument(
 parser.add_argument("port", metavar="Port", type=str, help="Controller Port number.")
 args = parser.parse_args()
 args = json.dumps(vars(args))  #    JSON FORMATTED ARGUMENTS
+args = json.loads(args)
 glob.CONTROLLER_IP = args["address"]
-glob.CONTROLLER_PORT = args["port"]
+glob.CONTROLLER_PORT = int(args["port"])
 
 # def createMockReqs():
 #     # Temporary for testing
@@ -60,7 +61,7 @@ hostManager = queueManager.HostManager()
 print("threads starting")
 lock = threading.Lock()
 reservationHandler = threading.Thread(
-    target=queueManager.consumer, args=(queue, lock), daemon=True
+    target=queueManager.consumer, args=(glob.queue, lock), daemon=True
 )
 # START THREADS
 switchHandler.start()
