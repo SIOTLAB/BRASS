@@ -50,7 +50,6 @@ def errorChecking(resReq, message):
     PORT = resReq.senderPort
     server_address = (IP, int(PORT))
     print(server_address)
-    # I don't understand what is happening here, why do we want to bind this address on controller side?
     s.bind(server_address)
 
     #   if message starts with YES: the reservation could be instantiated
