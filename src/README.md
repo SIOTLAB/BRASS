@@ -10,4 +10,4 @@ More information about specific modules can be found in the README files in the 
 Outdated/deprecated modules
 * topology -- original tests for discovering end hosts. This functionality has been merged into the main controller process.
 
-> Computer Science and Engieering<br />Santa Clara University (SCU), Class of 2022
+> Computer Science and Engineering<br />Santa Clara University (SCU), Class of 2022

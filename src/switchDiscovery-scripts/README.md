@@ -21,4 +21,4 @@ Arista Networks EOS shell
 [admin@sw21-r224 ~]$ python switch.py
 ```
 
-> Computer Science and Engieering<br />Santa Clara University (SCU), Class of 2022
+> Computer Science and Engineering<br />Santa Clara University (SCU), Class of 2022

@@ -11,4 +11,4 @@ This will send the reservation request to a server listening at IP address 10.16
 
 It will request a reservation from 24.224.1.2 on port 10000 to 22.224.1.2 on port 10000. It requests 20000 kbps of bandwidth to be reserved for 300 seconds using the tcp protocol.
 
-> Computer Science and Engieering<br />Santa Clara University (SCU), Class of 2022
+> Computer Science and Engineering<br />Santa Clara University (SCU), Class of 2022

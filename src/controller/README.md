@@ -15,4 +15,4 @@ For example,
 ```
 Will start the controller and try to bind the IP address to 10.16.224.151, port 5001 for switch discovery, and the same ip at port 5002 for end host requests.
 
-> Computer Science and Engieering<br />Santa Clara University (SCU), Class of 2022
+> Computer Science and Engineering<br />Santa Clara University (SCU), Class of 2022

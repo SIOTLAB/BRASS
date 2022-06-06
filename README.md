@@ -9,4 +9,4 @@ More detailed information can be found in the subdirectory README files:
 * scripts -- contains scripts for automating of tests and testing of features
 * testData -- contains csv files of test data and svg files of graphs/plots of data
 
-> Computer Science and Engieering<br />Santa Clara University (SCU), Class of 2022
+> Computer Science and Engineering<br />Santa Clara University (SCU), Class of 2022
