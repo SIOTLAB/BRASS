@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# This is the script that switches can run to send hello messages to the controller.
+# Controller must already be running.
 
 import argparse
 import json

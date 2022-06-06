@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-
+# Test script for recieving switch hellos on controller end. This script is no longer needed for 
+# host discovery and functionaly has been merged into main controller process.
 import socket
 
 
